@@ -1,7 +1,7 @@
-# Sentiment Analysis with NLP on IMDb Reviews
-##### *CSCI E-109B – Data Science Final Project*
+# NLP Sentiment Analysis on IMDb Reviews
+##### *CSCI E-109B – Advanced Topics in Data Science, Final Project*
 ##### *Harvard University Extension School*
-##### *Noah Eilken, Master’s Candidate in Data Science*
+##### *Noah Eilken, Master’s Degree Candidate in Data Science*
 
 ---
 
