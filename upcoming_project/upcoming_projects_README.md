@@ -35,8 +35,8 @@ These projects will extend my portfolio into **MLOps, time series forecasting, a
 These projects will be added to my portfolio repository as they are completed.  
 In the meantime, you can explore my [current projects](../) including:  
 
-- **[NLP Sentiment Analysis (BERT + BiLSTM)](./nlp_sentiment_analysis_project)**  
-- **[Airline Delay Data Mining (Clustering + Dimensionality Reduction)](./data_mining_airline_delays_project)**  
+- **[NLP Sentiment Analysis (BERT + BiLSTM)](../nlp_sentiment_analysis_project)**  
+- **[Airline Delay Data Mining (Clustering + Dimensionality Reduction)](../data_mining_airline_delays_project)**  
 
 ---
 
