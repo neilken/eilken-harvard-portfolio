@@ -24,7 +24,7 @@ This data science portfolio contains a collection of projects developed as part 
   - Built and evaluated multiple NLP models for sentiment classification on IMDb movie reviews.  
 - **Highlights:**
   - Preprocessing with tokenization, embeddings, and sequence padding  
-  - Implemented models: Logistic Regression, LSTMs, GRUs, and BERT  
+  - Implemented models: Logistic Regression, Naive Bayes, LSTMs, and BERT  
   - Compared performance and discussed tradeoffs between classical ML and deep learning models  
 - [Project Repository](./nlp_sentiment_analysis_project)
 
