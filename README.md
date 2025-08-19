@@ -26,7 +26,7 @@ This data science portfolio contains a collection of projects developed as part 
   - Preprocessing with tokenization, embeddings, and sequence padding  
   - Implemented models: Logistic Regression, LSTMs, GRUs, and BERT  
   - Compared performance and discussed tradeoffs between classical ML and deep learning models  
-- [Project Repository](./NLP_sentiment_analysis_BERT_RNN_project)
+- [Project Repository](./nlp_sentiment_analysis_project)
 
 ---
 
