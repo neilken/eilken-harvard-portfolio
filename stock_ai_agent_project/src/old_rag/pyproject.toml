@@ -1,0 +1,23 @@
+﻿# RAG/pyproject.toml
+[project]
+name = "ac215-rag"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+dependencies = [
+  # API
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.30",
+
+  # Vector DB + embeddings
+  "chromadb==0.5.5",
+  "fastembed>=0.3.4",
+  "onnxruntime>=1.18.0",
+
+  # PDF text extraction (remove if not needed)
+  "pymupdf>=1.24.0",
+
+  # (optional) faster JSON
+  "orjson>=3.10.0",
+]
+

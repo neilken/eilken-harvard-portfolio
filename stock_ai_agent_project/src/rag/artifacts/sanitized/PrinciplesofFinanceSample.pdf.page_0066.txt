@@ -1,0 +1,1 @@
+Figure 5.22 Common-Size Balance Sheet Excel can also be used to create a common-size balance sheet. Once the formula is created, it can be copied into each line, making the process to create a common-size statement much easier (see Figure 5.23): 5.7 • Common-Size Statements 151

@@ -1,0 +1,24 @@
+﻿services:
+  rag:
+    build: .
+    image: ms2-rag
+    container_name: rag-cli
+    env_file:
+      - .env
+    working_dir: /workspace
+    volumes:
+      - ./volumes/chroma:/workspace/volumes/chroma
+      - ./artifacts:/workspace/artifacts
+      - ./data:/workspace/data
+    ports:
+      - "8000:8000"
+    command: ["--serve"]   # default: run the API
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${API_PORT:-8000}/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+
+

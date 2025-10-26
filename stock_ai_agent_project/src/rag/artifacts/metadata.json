@@ -1,0 +1,7 @@
+{
+  "collection": "stocks_rag_v1",
+  "num_chunks": 276,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "chunk_size": 1200,
+  "chunk_overlap": 200
+}

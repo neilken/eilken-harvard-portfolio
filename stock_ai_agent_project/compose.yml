@@ -1,0 +1,36 @@
+version: '1.0'
+networks:
+    default:
+        name: stock-busters-network
+        external: false
+services:
+  findata:
+    build:
+      context: ./src/fin_data_download
+      dockerfile: Dockerfile 
+    image: findata
+    container_name: findata
+    volumes:
+      - ../secrets:/app/secrets
+      - ./src/fin_data_download:/app
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/stock-busters-service-account.json
+      GCP_PROJECT: stock-busters-cs115
+
+  rag-llm:
+    build:
+      context: ./src/rag
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    image: rag-llm
+    container_name: rag-llm
+    volumes:
+      - ../secrets:/app/secrets
+      - ./src/rag:/app
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/stock-busters-service-account.json
+      GCP_PROJECT: stock-busters-cs115
+
+
+    

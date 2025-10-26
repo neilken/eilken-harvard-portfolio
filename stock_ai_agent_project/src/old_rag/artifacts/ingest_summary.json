@@ -1,0 +1,11 @@
+{
+  "num_input_docs": 101,
+  "num_chunks": 276,
+  "collection": "stocks_rag_v1",
+  "data_dir": "./data",
+  "vector_store_path": "./volumes/chroma",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "chunk_size": 1200,
+  "chunk_overlap": 200,
+  "elapsed_sec": 30.31
+}

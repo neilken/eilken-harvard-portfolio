@@ -1,0 +1,41 @@
+{
+  "query": "What is P/E ratio?",
+  "results": {
+    "ids": [
+      [
+        "./data/PrinciplesofFinanceSample.pdf#page=96::chunk_0",
+        "./data/PrinciplesofFinanceSample.pdf#page=91::chunk_2"
+      ]
+    ],
+    "distances": [
+      [
+        0.35906752943992615,
+        0.5319041013717651
+      ]
+    ],
+    "metadatas": [
+      [
+        {
+          "source": "./data/PrinciplesofFinanceSample.pdf#page=96"
+        },
+        {
+          "source": "./data/PrinciplesofFinanceSample.pdf#page=91"
+        }
+      ]
+    ],
+    "embeddings": null,
+    "documents": [
+      [
+        "Price/Earnings (P/E) Ratio The price/earnings (P/E) ratio measures the current market share price of a company's stock relative to its earnings per share (EPS). The ratio is helpful in comparing performance and stock price of a company to other companies. It's also helpful in evaluating how much investors are willing to pay for earnings performance. Investors, in particular, use this ratio and rely on two key characteristics: past performance (trailing) and future estimates (forward). Trailing data can be calculated but is also easily found online, as it's a common measure reported on financial sites. Investors will often look for P/E TTM, which is the price/earnings ratio for the trailing 12 months (last year worth of earnings data). This helps investors assess one day's stock price relative to the earnings per share over the past 12 months. P/E ratio is widely used by investors to determine if a stock is over- or undervalued. It also helps them compare one firm to that of the industry average or index, such as the S&P 500. In the prior section we saw earnings per share data for Clear Lake Sporting Goods. Using its current year earnings per share of $3.75 and the current stock pri",
+        "e-to- earnings ratio (the market price of the stock divided by its earnings per share), which many investors find to be a key indicator of the value of a company's stock. It's key to note, however, that EPS, like any ratio, should be used with caution and in tandem with other ratios and contextual data. Many financial professionals choose not to rely on income statement data and, similarly, EPS because they feel the cash flow statement provides more reliable and insightful information. 176 6 • Measures of Financial Health Access for free at openstax.org"
+      ]
+    ],
+    "uris": null,
+    "data": null,
+    "included": [
+      "documents",
+      "metadatas",
+      "distances"
+    ]
+  }
+}

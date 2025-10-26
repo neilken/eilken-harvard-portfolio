@@ -1,0 +1,51 @@
+# ============================
+# .dockerignore for Finance Data Pipeline
+# ============================
+
+# --- 1. Ignore Python caches and compiled files ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+
+# --- 2. Ignore data & local output files ---
+*.csv
+*.xlsx
+*.parquet
+*.zip
+*.log
+*.tmp
+
+# --- 3. Ignore Jupyter notebooks & large local artifacts ---
+*.ipynb
+.ipynb_checkpoints/
+
+# --- 4. Ignore secrets & sensitive credentials ---
+secrets/service_account.json
+secrets/*.json
+secrets/*.key
+secrets/*.pem
+
+# --- 5. Ignore Git and version control folders ---
+.git
+.gitignore
+
+# --- 6. Ignore Docker metadata (when building from root) ---
+Dockerfile
+.dockerignore
+
+# --- 7. Ignore OS or editor specific files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- 8. Ignore notebooks and reports ---
+notebooks/
+reports/
+
+# --- 9. Ignore other local build files or backups ---
+*.bak
+*.old

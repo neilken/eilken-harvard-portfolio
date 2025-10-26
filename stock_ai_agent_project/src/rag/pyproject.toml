@@ -1,0 +1,32 @@
+﻿[project]
+name = "ac215-rag"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+dependencies = [
+  # API
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.30",
+
+  # Vector DB + embeddings
+  "numpy>=1.26",
+  "chromadb==0.5.5",
+  "fastembed>=0.3.4",
+  "onnxruntime>=1.18.0",
+
+  # PDF text extraction
+  "pymupdf>=1.24.0",
+
+  # LangChain ecosystem
+  "langchain>=0.2,<0.3",
+  "langchain-community>=0.2,<0.3",
+  "langchain-chroma>=0.1.0,<0.2",
+
+  # (optional) faster JSON
+  "orjson>=3.10.0",
+]
+
+
+
+
+
