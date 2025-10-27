@@ -10,20 +10,26 @@ dependencies = [
 
   # Vector DB + embeddings
   "numpy>=1.26",
-  "chromadb==0.5.5",
-  "fastembed>=0.3.4",
-  "onnxruntime>=1.18.0",
+  "chromadb>=0.5.5,<0.6",         
+  "fastembed>=0.3.4,<0.4",
+  "onnxruntime>=1.18.0,<1.19",
 
   # PDF text extraction
-  "pymupdf>=1.24.0",
+  "pymupdf>=1.24.0,<1.25",
 
   # LangChain ecosystem
   "langchain>=0.2,<0.3",
   "langchain-community>=0.2,<0.3",
   "langchain-chroma>=0.1.0,<0.2",
 
-  # (optional) faster JSON
+  # Utility
   "orjson>=3.10.0",
+
+  # Optional tokenizer for accurate token counts
+  "tiktoken>=0.7.0",
+  
+  # GCS storage (optional, for persistent vector storage)
+  "google-cloud-storage>=2.10.0",
 ]
 
 
