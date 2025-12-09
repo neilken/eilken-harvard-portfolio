@@ -1,0 +1,6 @@
+outs:
+- md5: 33daaa3931e6382ec7d658ee3e74f544.dir
+  size: 44248770
+  nfiles: 6
+  hash: md5
+  path: chroma

@@ -1,0 +1,23 @@
+# encryptionsalt: v1:Ql1K//qmtaQ=:v1:fhFyMtpDtq0O41hJ:fA2sI27np3naGsGEOOg3GMoHM2TJfw==
+# config:
+#   gcp:project: stock-busters-cs115
+#   security:ssh_user: sa_100110341521630214262
+#   security:gcp_service_account_email: deployment@stock-busters-cs115.iam.gserviceaccount.com
+#   security:gcp_ksa_service_account_email: gcp-service@stock-busters-cs115.iam.gserviceaccount.com
+#   deploy-k8s:setupSSL: "false"
+
+# encryptionsalt: v1:Ql1K//qmtaQ=:v1:fhFyMtpDtq0O41hJ:fA2sI27np3naGsGEOOg3GMoHM2TJfw==
+# config:
+#   gcp:project: stock-busters-cs115
+#   security:ssh_user: sa_100110341521630214262
+#   security:gcp_service_account_email: stockbusters-deployment@stock-busters-cs115.iam.gserviceaccount.com
+#   security:gcp_ksa_service_account_email: stockbusters-gcp-service-accou@stock-busters-cs115.iam.gserviceaccount.com
+#   deploy-k8s:setupSSL: "false"
+
+encryptionsalt: v1:Ql1K//qmtaQ=:v1:fhFyMtpDtq0O41hJ:fA2sI27np3naGsGEOOg3GMoHM2TJfw==
+config:
+  gcp:project: stock-busters-cs115
+  security:ssh_user: sa_100110341521630214262
+  security:gcp_service_account_email: 1037206705113-compute@developer.gserviceaccount.com
+  security:gcp_ksa_service_account_email: stockbusters-gcp-service-accou@stock-busters-cs115.iam.gserviceaccount.com
+  deploy-k8s:setupSSL: "false"

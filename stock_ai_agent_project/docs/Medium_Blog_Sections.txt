@@ -1,0 +1,132 @@
+=================================================
+MEDIUM BLOG SECTIONS - CONTENT FOR .DOCX FILE
+=================================================
+
+Copy these sections into your Medium Blog.docx file
+
+=================================================
+SECTION 3: RAG-Powered Investment Reasoning
+=================================================
+
+One of the most innovative features of Stock Busters is our RAG (Retrieval-Augmented Generation) powered investment reasoning system. This technology automatically generates natural language explanations for each stock recommendation, making our quantitative predictions more accessible and interpretable.
+
+HOW IT WORKS
+
+Our RAG system combines three key technologies:
+
+1. Vector Database (ChromaDB): We store a comprehensive knowledge base of financial documents and investment guidelines as embeddings in ChromaDB, hosted on Google Cloud Storage. This vector database contains encoded financial knowledge about valuation metrics, technical indicators, and fundamental analysis principles.
+
+2. Embedding Model (FastEmbed): We use BAAI's bge-small-en-v1.5 model to generate 384-dimensional embeddings for our financial knowledge base documents. While embeddings enable semantic search capabilities, our system uses direct document retrieval for consistency—fetching the complete financial knowledge document from ChromaDB rather than searching individual chunks.
+
+3. Large Language Model (Google Vertex AI Gemini 2.5 Flash): Our LLM takes the complete financial knowledge base (retrieved from ChromaDB) and combines it with specific stock metrics (like P/E ratio, RSI, ROE, sector information) to generate human-readable investment reasoning. The financial context is provided as a system message, while stock-specific metrics are sent as a compact user message, optimizing token usage.
+
+THE PROCESS
+
+When generating reasoning for a stock recommendation:
+
+Step 1: Stock Metrics Extraction
+Our system extracts key quantitative metrics for each stock, including:
+- Hybrid Score, Fundamental Score, and Technical Score
+- Valuation metrics (P/E ratio, ROE, ROIC)
+- Technical indicators (RSI, moving averages)
+- Sector and industry classifications
+
+Step 2: Context Retrieval
+The system retrieves the complete financial knowledge base document from ChromaDB. Rather than performing semantic search on individual chunks, the system uses direct retrieval of the full markdown document that was stored during ingestion. This comprehensive document contains investment guidelines, metric interpretations, and sector-specific insights that provide context for analyzing stock metrics. The document is cached locally after first retrieval to optimize performance.
+
+Step 3: AI-Generated Reasoning
+Google's Gemini model analyzes the stock metrics in the context of the retrieved financial knowledge and generates concise, interpretable explanations. The reasoning explains why a stock is recommended, focusing on factors like:
+- Attractive valuation metrics
+- Strong technical momentum
+- Solid fundamental health
+- Sector-specific opportunities
+
+Example reasoning output: "Attractive P/E ratio. Strong RSI momentum. Solid ROE indicates efficient capital utilization. Technology sector showing positive trends."
+
+OPTIMIZATION FOR SCALE
+
+To handle hundreds of stocks efficiently, we've implemented several optimizations:
+
+- Parallel Processing: Stocks are processed in parallel using ThreadPoolExecutor, allowing us to generate reasoning for multiple stocks simultaneously (with configurable worker limits)
+- Document Caching: The full knowledge base document is cached locally after first retrieval to avoid repeated ChromaDB lookups, significantly improving performance
+- Efficient Prompt Structure: We use system messages for the static financial knowledge base context and minimal user messages containing only stock-specific metrics, reducing token usage by ~95% compared to sending full context with each query
+- Direct Document Retrieval: Instead of semantic search, the system retrieves the complete financial knowledge document directly from ChromaDB using a cached document ID, ensuring consistent context across all stock analyses
+
+INTEGRATION WITH QUANTITATIVE MODEL
+
+The RAG reasoning system seamlessly integrates with our quantitative stock prediction pipeline. After our machine learning models calculate Hybrid Scores and generate stock rankings, the RAG system automatically adds human-readable explanations to each recommendation. This combination of quantitative rigor and qualitative explanation gives users both the "what" (the score) and the "why" (the reasoning) behind each investment suggestion.
+
+The result is a more transparent, interpretable investment platform where users don't just see numbers and scores—they understand the logic behind the recommendations.
+
+
+=================================================
+CI/CD PIPELINE SECTION
+=================================================
+
+Stock Busters implements a comprehensive CI/CD pipeline that ensures code quality, automated testing, and seamless deployment to production. Our pipeline follows industry best practices and achieves 70% combined test coverage across all components.
+
+CONTINUOUS INTEGRATION (CI)
+
+Our unified CI pipeline automatically runs on every push and pull request, validating three main components:
+
+1. RAG Component: Document processing, embedding generation, and retrieval systems
+2. Quantamental Component: Quantitative analysis and stock prediction models
+3. API-service Component: FastAPI backend serving chatbot and stock details endpoints
+
+The CI pipeline executes in four sequential jobs:
+
+1. Change Detection: Automatically identifies which components have been modified, skipping tests for unchanged components to optimize execution time
+
+2. Build: Builds Docker images for all changed components in parallel using matrix strategy
+
+3. Tests: Runs comprehensive test suites including:
+   - Lint tests (Black and Flake8 for code quality)
+   - Unit tests (testing individual functions in isolation)
+   - Integration tests (testing component interactions with mocked services)
+   - System tests (end-to-end tests with running Docker containers)
+
+4. Test Summary: Combines coverage reports from all components into a unified report and generates a comprehensive summary with coverage metrics
+
+TEST COVERAGE RESULTS
+
+Our pipeline enforces a minimum 50% combined coverage threshold and currently achieves:
+- Combined Coverage: 70% (exceeds both 50% threshold and 60% requirement)
+- RAG Component: 73% coverage, 67% branch coverage
+- Quantamental Component: 62% coverage, 46% branch coverage  
+- API-service Component: 78% coverage, 67% branch coverage
+
+With over 390 tests across all components, we ensure robust validation of all critical functionality.
+
+CONTINUOUS DEPLOYMENT (CD)
+
+Upon successful CI completion, our CD pipeline automatically deploys to Google Kubernetes Engine (GKE):
+
+1. Authentication: Uses Workload Identity Federation (OIDC) for secure GCP access—no long-lived secrets required
+
+2. Docker Image Build: Builds production-ready Docker images for frontend and API services, pushing them to GCP Artifact Registry
+
+3. Infrastructure Deployment: Uses Pulumi (Infrastructure as Code) to deploy:
+   - Kubernetes namespace and deployments
+   - LoadBalancer services for public access
+   - Ingress controllers for traffic routing
+   - All necessary configurations
+
+4. Health Verification: Waits for pods to be ready, verifies application health endpoints, and provides deployment summaries with public URLs
+
+The entire deployment process is optimized to complete in 7-8 minutes, with parallel operations, dependency caching, and intelligent retry logic handling transient network issues.
+
+KEY FEATURES
+
+- Automated Testing: Every code change triggers comprehensive test execution
+- Quality Gates: Code must pass all tests and meet coverage thresholds before deployment
+- Zero-Downtime Deployment: Rolling updates ensure continuous service availability
+- Infrastructure as Code: All infrastructure is version-controlled and reproducible
+- Secure Authentication: OIDC eliminates the need for stored service account keys
+- Optimization: Path-based change detection, parallel execution, and caching reduce pipeline runtime by ~50%
+
+This CI/CD pipeline ensures that only high-quality, well-tested code reaches production, maintaining the reliability and performance of the Stock Busters platform.
+
+=================================================
+END OF SECTIONS
+=================================================
+

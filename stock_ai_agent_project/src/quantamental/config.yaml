@@ -1,0 +1,104 @@
+# Quantamental Model Configuration
+# =================================
+
+# API Configuration
+api:
+  base_url: "https://financialmodelingprep.com/api/v3"
+  concurrency: 8
+  timeout: 60
+
+# Data Configuration
+data:
+  data_dir: "./data"
+  start_date: null  # Will be computed as 3 years ago
+  end_date: null    # Will be computed as today
+  cache_enabled: true
+
+# GCS Configuration
+gcs:
+  bucket_name: "fin-data-bucket-115"
+  output_folder: "model_output"
+  # Service account key path 
+  credentials_path: "../../secrets/stock-busters-service-account.json"
+
+# W&B Configuration
+wandb:
+  project: "Quantamental-model"
+  entity: null  # Will use default W&B account
+  run_name: null  # Auto-generated if not set
+  tags:
+    - "quantamental"
+    - "stock-screening"
+    - "random-forest"
+
+# Feature Configuration
+features:
+  technical:
+    - return_1m
+    - ema_12
+    - ema_26
+    - macd
+    - macd_signal
+    - macd_hist
+    - RSI_14
+    - volatility_21d
+  
+  fundamental:
+    - payoutRatio
+    - cashPerShare
+    - dividendYield
+    - revenuePerShare
+    - earningsYield
+    - evToOperatingCashFlow
+    - netDebtToEBITDA
+    - freeCashFlowYield
+    - pocfratio
+    - intangiblesToTotalAssets
+    - netIncomePerShare
+    - incomeQuality
+    - capexToDepreciation
+    - operatingCashFlowPerShare
+    - peRatio
+    - returnOnTangibleAssets
+    - investedCapital
+    - roe
+    - roic
+    - debtToEquity
+    - currentRatio
+    - interestCoverage
+
+# Model Configuration
+model:
+  type: "RandomForestClassifier"
+  hyperparameters:
+    n_estimators: 400
+    max_depth: 8
+    class_weight: "balanced"
+    random_state: 42
+  
+  # Training window
+  train_window_months: 12
+  
+  # Prediction threshold (will be optimized during training)
+  threshold: 0.5
+
+# Processing Configuration
+processing:
+  monthly_snapshot: true
+  forward_fill_limit: 5
+  backfill_limit: 1
+  coverage_threshold_ratio: 0.9
+  remove_inf: true
+  remove_nan: true
+
+# Backtest Configuration
+backtest:
+  top_n_stocks: 10
+  output_format: "csv"  # Options: csv, parquet, both
+  include_metrics: true
+
+# RAG Reasoning Configuration
+rag:
+  enabled: true        # Enable/disable reasoning generation
+  max_workers: 20      # Parallel workers for reasoning generation (default: 20)
+  sample_size: null    # Optional: test with N stocks only (null = all stocks)

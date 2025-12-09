@@ -1,0 +1,55 @@
+# Pre-commit Hooks Configuration for Quantamental Pipeline
+# MS4 Automation Setup
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Python code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3.10
+        args: ['--line-length=100']
+        files: \.py$
+        exclude: ^(wandb|artifacts|data|__pycache__)
+
+  # Python linting with Flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=100', '--extend-ignore=E203,W503']
+        files: \.py$
+        exclude: ^(wandb|artifacts|data|__pycache__|tests)
+
+  # Sort imports
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ['--profile', 'black', '--line-length=100']
+        files: \.py$
+
+# Exclude specific files/directories
+exclude: |
+  (?x)(
+      ^wandb/|
+      ^artifacts/|
+      ^data/|
+      ^__pycache__/|
+      ^\.pytest_cache/|
+      ^htmlcov/|
+      \.ipynb$
+  )

@@ -1,0 +1,42 @@
+[project]
+name = "ac215-orchestrator"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Financial investment advisor orchestrator using LangGraph and Gemini"
+
+dependencies = [
+    # LangChain and LangGraph
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-google-vertexai>=1.0.0",
+    "langgraph>=0.0.20",
+    
+    # Gradio for UI
+    "gradio>=4.0.0",
+    
+    # HTTP client for RAG API
+    "requests>=2.31.0",
+    
+    # Environment variables
+    "python-dotenv>=1.0.0",
+    
+    # Jupyter/IPython for notebook support (optional)
+    "ipython>=8.0.0",
+    "jupyter>=1.0.0",
+    "nest-asyncio>=1.5.0",
+    
+    # Pydantic for data validation
+    "pydantic>=2.0.0",
+    
+    # Google Cloud (for credential verification and Vertex AI)
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-aiplatform>=1.38.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+

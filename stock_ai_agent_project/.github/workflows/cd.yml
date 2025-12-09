@@ -1,0 +1,389 @@
+# CD Pipeline - Continuous Deployment to Kubernetes
+# Uses Workload Identity Federation (OIDC) for authentication
+# This version does NOT require GitHub secrets
+# Optimized for faster execution (~5-7 minutes instead of 10+ minutes)
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["Unified CI Pipeline"]
+    types: [completed]
+    branches: [main, develop, Milestone5]
+  push:
+    branches: [main, develop, Milestone5]
+    paths:
+      - '.github/workflows/cd.yml'
+      - 'src/deployment/**'
+      - 'src/frontend/**'
+  workflow_dispatch:  # Allow manual triggering for testing
+    inputs:
+      skip_ci_check:
+        description: 'Skip CI check (use with caution)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+# Prevent multiple deployments from running simultaneously
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# Set default permissions
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC authentication
+
+env:
+  GCP_PROJECT: stock-busters-cs115
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev/stock-busters-cs115/stockbusters-app-repository
+  PULUMI_BUCKET: gs://stock-busters-cs115-pulumi-state-bucket
+  PULUMI_STACK: dev
+  # Workload Identity Pool Provider
+  WIF_PROVIDER: projects/1037206705113/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  WIF_SERVICE_ACCOUNT: stockbusters-deployment@stock-busters-cs115.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    # Run on:
+    # 1. Manual workflow_dispatch
+    # 2. Push events (triggers when cd.yml or deployment code changes on main/develop/Milestone5)
+    # 3. workflow_run: CI completed successfully on main/develop/Milestone5 branch
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'Milestone5'))
+    
+    steps:
+      - name: Debug workflow trigger
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "🔍 Debugging CD Pipeline Trigger"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Workflow run head branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Workflow run workflow: ${{ github.event.workflow_run.workflow }}"
+          echo "Current ref: ${{ github.ref }}"
+          echo "Current branch: ${{ github.ref_name }}"
+          echo "Triggered by workflow_run: ${{ github.event.workflow_run.id }}"
+      
+      - name: Determine checkout ref
+        id: checkout-ref
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "ref=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.checkout-ref.outputs.ref }}
+          fetch-depth: 1  # Shallow checkout for faster clone
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Install GKE gcloud auth plugin
+        run: |
+          echo "🔧 Installing gke-gcloud-auth-plugin for GKE authentication..."
+          gcloud components install gke-gcloud-auth-plugin --quiet
+          # Find and add plugin to PATH
+          GCLOUD_ROOT=$(gcloud info --format="value(installation.sdk_root)" 2>/dev/null || echo "")
+          if [ -n "$GCLOUD_ROOT" ] && [ -d "$GCLOUD_ROOT/bin" ]; then
+            echo "$GCLOUD_ROOT/bin" >> $GITHUB_PATH
+            echo "✅ Added $GCLOUD_ROOT/bin to PATH"
+          fi
+
+      - name: Create dummy secrets for build (if needed)
+        run: |
+          mkdir -p secrets
+          if [ ! -f secrets/gcs-key.json ]; then
+            echo '{}' > secrets/gcs-key.json
+          fi
+          if [ ! -f secrets/stock-busters-service-account.json ]; then
+            echo '{}' > secrets/stock-busters-service-account.json
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/uv
+            ~/.local/lib/python*
+          key: ${{ runner.os }}-python-deployment-${{ hashFiles('src/deployment/pyproject.toml', 'src/deployment/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python-deployment-
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v4
+        with:
+          pulumi-version: latest
+
+      - name: Install Pulumi Python dependencies
+        run: |
+          cd src/deployment
+          python -m pip install --upgrade pip --cache-dir ~/.cache/pip
+          pip install uv
+          # Use uv with cache directory for faster installs
+          uv pip install --system --cache-dir ~/.cache/uv -e .
+
+      - name: Configure Pulumi backend
+        run: |
+          echo "🔐 Verifying GCP authentication..."
+          gcloud auth list
+          echo "📦 Configuring Pulumi backend..."
+          # Verify bucket access with retry (reduced delays)
+          for i in {1..3}; do
+            if gsutil ls -b ${{ env.PULUMI_BUCKET }} 2>/dev/null || gsutil mb -p ${{ env.GCP_PROJECT }} -l ${{ env.GCP_REGION }} ${{ env.PULUMI_BUCKET }} 2>/dev/null; then
+              echo "✅ Bucket access verified"
+              break
+            else
+              if [ $i -lt 3 ]; then
+                echo "⚠️ Bucket access failed, retrying in 3s... (attempt $i/3)"
+                sleep 3
+              else
+                echo "❌ Failed to access bucket after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
+          # Login to Pulumi backend with retry (reduced delays)
+          for i in {1..3}; do
+            if pulumi login ${{ env.PULUMI_BUCKET }} 2>/dev/null; then
+              echo "✅ Pulumi backend login successful"
+              break
+            else
+              if [ $i -lt 3 ]; then
+                echo "⚠️ Pulumi login failed, retrying in 3s... (attempt $i/3)"
+                sleep 3
+              else
+                echo "❌ Failed to login to Pulumi backend after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Configure and select Pulumi stacks
+        run: |
+          echo "📦 Configuring and selecting Pulumi stacks..."
+          
+          # Ensure we start from repo root
+          REPO_ROOT=$(pwd)
+          echo "Repo root: $REPO_ROOT"
+          
+          # Function to retry Pulumi commands with exponential backoff (reduced initial delay)
+          retry_pulumi_cmd() {
+            local max_attempts=3
+            local attempt=1
+            local delay=2
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Attempt $attempt/$max_attempts: $1"
+              if eval "$1"; then
+                echo "✅ Command succeeded"
+                return 0
+              else
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "⚠️ Command failed, retrying in ${delay}s..."
+                  sleep $delay
+                  delay=$((delay * 2))
+                else
+                  echo "❌ Command failed after $max_attempts attempts"
+                  return 1
+                fi
+              fi
+              attempt=$((attempt + 1))
+            done
+          }
+          
+          # Configure and select stacks (ensure we're always in repo root before each iteration)
+          for stack_dir in deploy_images deploy_k8s; do
+            echo "Processing $stack_dir..."
+            cd "$REPO_ROOT/src/deployment/$stack_dir"
+            echo "Current directory: $(pwd)"
+            retry_pulumi_cmd "pulumi stack select ${{ env.PULUMI_STACK }} 2>/dev/null || pulumi stack init ${{ env.PULUMI_STACK }}"
+            pulumi config set gcp:project ${{ env.GCP_PROJECT }} || true
+            cd "$REPO_ROOT"
+          done
+          
+          echo "✅ Stack configuration complete"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Deploy Docker images (Pulumi)
+        run: |
+          cd src/deployment/deploy_images
+          echo "🚀 Building and pushing Docker images to Artifact Registry..."
+          export GCP_REGION=${{ env.GCP_REGION }}
+          # Enable Docker BuildKit for automatic layer caching and parallel builds
+          # BuildKit will automatically cache layers when the same base images and commands are used
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+          export BUILDKIT_PROGRESS=plain
+          pulumi up --yes --skip-preview
+        env:
+          GCP_REGION: ${{ env.GCP_REGION }}
+          PULUMI_CONFIG_PASSPHRASE: ""
+          DOCKER_BUILDKIT: "1"
+
+      - name: Deploy to Kubernetes (Pulumi)
+        run: |
+          cd src/deployment/deploy_k8s
+          echo "🚀 Deploying application to Kubernetes cluster..."
+          # Verify gke-gcloud-auth-plugin is accessible
+          which gke-gcloud-auth-plugin && echo "✅ gke-gcloud-auth-plugin found in PATH" || echo "⚠️ Warning: gke-gcloud-auth-plugin not found"
+          export GCP_REGION=${{ env.GCP_REGION }}
+          pulumi up --yes --skip-preview
+        env:
+          GCP_REGION: ${{ env.GCP_REGION }}
+          PULUMI_CONFIG_PASSPHRASE: ""
+          PULUMI_K8S_DELETE_UNREACHABLE: "true"
+
+      - name: Get deployment outputs
+        id: deployment-outputs
+        run: |
+          cd src/deployment/deploy_k8s
+          echo "📦 Getting Pulumi stack outputs..."
+          
+          # Ensure we're on the right stack
+          pulumi stack select ${{ env.PULUMI_STACK }} || echo "⚠️  Stack selection failed"
+          
+          # List all available outputs for debugging
+          echo "Available outputs:"
+          pulumi stack output --json 2>&1 | head -20 || echo "⚠️  Could not list outputs"
+          
+          # Get outputs with better error handling
+          echo ""
+          echo "Retrieving specific outputs..."
+          
+          CLUSTER_NAME=$(pulumi stack output cluster_name --show-secrets 2>&1 | grep -v "error\|warning" | head -1 || echo "")
+          APP_URL=$(pulumi stack output app_url --show-secrets 2>&1 | grep -v "error\|warning" | head -1 || echo "")
+          IP_ADDRESS=$(pulumi stack output ip_address --show-secrets 2>&1 | grep -v "error\|warning" | head -1 || echo "")
+          
+          # Remove quotes if present
+          CLUSTER_NAME=$(echo "$CLUSTER_NAME" | tr -d '"' | xargs)
+          APP_URL=$(echo "$APP_URL" | tr -d '"' | xargs)
+          IP_ADDRESS=$(echo "$IP_ADDRESS" | tr -d '"' | xargs)
+          
+          # Set outputs (empty strings are fine, GitHub Actions will handle them)
+          echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "ip_address=$IP_ADDRESS" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📊 Deployment Outputs:"
+          echo "  Cluster: ${CLUSTER_NAME:-'Not available'}"
+          echo "  App URL: ${APP_URL:-'Not available'}"
+          echo "  IP Address: ${IP_ADDRESS:-'Not available'}"
+          
+          # If outputs are empty, try to get from kubectl as fallback
+          if [ -z "$APP_URL" ] || [ -z "$IP_ADDRESS" ]; then
+            echo ""
+            echo "⚠️  Pulumi outputs empty, trying to get from Kubernetes..."
+            if command -v kubectl &> /dev/null; then
+              # Get cluster credentials if needed
+              gcloud container clusters get-credentials stockbusters-app-cluster --region us-central1 --project stock-busters-cs115 2>/dev/null || true
+              
+              # Try to get IP from ingress
+              K8S_IP=$(kubectl get ingress -n stockbusters-app-namespace -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+              if [ -n "$K8S_IP" ]; then
+                IP_ADDRESS="$K8S_IP"
+                APP_URL="http://${K8S_IP}.sslip.io"
+                echo "✅ Found from Kubernetes:"
+                echo "  IP Address: $IP_ADDRESS"
+                echo "  App URL: $APP_URL"
+                echo "ip_address=$IP_ADDRESS" >> $GITHUB_OUTPUT
+                echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+              fi
+            fi
+          fi
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ""
+
+      - name: Get kubeconfig
+        id: kubeconfig
+        run: |
+          cd src/deployment/deploy_k8s
+          pulumi stack output kubeconfig --show-secrets > /tmp/kubeconfig.yaml 2>/dev/null || echo ""
+          if [ -f /tmp/kubeconfig.yaml ] && [ -s /tmp/kubeconfig.yaml ]; then
+            echo "kubeconfig_path=/tmp/kubeconfig.yaml" >> $GITHUB_OUTPUT
+            echo "kubeconfig_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "kubeconfig_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Wait for pods to be ready
+        if: steps.kubeconfig.outputs.kubeconfig_exists == 'true'
+        run: |
+          export KUBECONFIG=${{ steps.kubeconfig.outputs.kubeconfig_path }}
+          
+          echo "⏳ Waiting for pods to be ready (parallel)..."
+          # Wait for both pods in parallel to save time
+          kubectl wait --for=condition=ready pod -l run=frontend --timeout=120s --namespace=stockbusters-app-namespace || echo "Frontend pods not ready" &
+          FRONTEND_PID=$!
+          kubectl wait --for=condition=ready pod -l run=api --timeout=120s --namespace=stockbusters-app-namespace || echo "API pods not ready" &
+          API_PID=$!
+          
+          # Wait for both background processes to complete
+          wait $FRONTEND_PID
+          FRONTEND_EXIT=$?
+          wait $API_PID
+          API_EXIT=$?
+          
+          echo "📋 Pod status:"
+          kubectl get pods --namespace=stockbusters-app-namespace
+
+      - name: Verify deployment health
+        if: steps.deployment-outputs.outputs.app_url != ''
+        run: |
+          APP_URL="${{ steps.deployment-outputs.outputs.app_url }}"
+          echo "🔍 Checking application health at: $APP_URL"
+          sleep 5
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL" || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ Application is responding (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️ Application returned HTTP $HTTP_CODE (may still be starting)"
+          fi
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 CD Pipeline Deployment Summary (OIDC)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${{ steps.deployment-outputs.outputs.cluster_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App URL**: ${{ steps.deployment-outputs.outputs.app_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **IP Address**: ${{ steps.deployment-outputs.outputs.ip_address }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.event.workflow_run.head_sha || github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Authentication**: Workload Identity Federation (OIDC)" >> $GITHUB_STEP_SUMMARY
+

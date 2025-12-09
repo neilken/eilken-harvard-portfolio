@@ -1,0 +1,47 @@
+# Flake8 Configuration for Quantamental Pipeline
+# MS4 Code Quality Standards
+
+[flake8]
+# Maximum line length
+max-line-length = 100
+
+# Maximum complexity (McCabe)
+max-complexity = 15
+
+# Ignore specific errors
+ignore = 
+    E203,  # whitespace before ':'
+    E501,  # line too long (handled by max-line-length)
+    W503,  # line break before binary operator
+    E402,  # module level import not at top of file
+    F401,  # imported but unused (can be strict, adjust if needed)
+
+# Exclude paths
+exclude =
+    .git,
+    __pycache__,
+    wandb,
+    artifacts,
+    data,
+    .venv,
+    venv,
+    env,
+    htmlcov,
+    .pytest_cache,
+    *.egg-info,
+    docs
+
+# File patterns to check
+filename = *.py
+
+# Show source code for errors
+show-source = True
+
+# Show pep8 error code
+show-pep8 = True
+
+# Count errors
+count = True
+
+# Statistics
+statistics = True

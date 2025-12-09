@@ -1,0 +1,117 @@
+==========================================
+Stock Busters Scaling Demo
+==========================================
+
+1. Current State (Before Scaling)
+-----------------------------------
+NAME                                                          READY   STATUS    RESTARTS   AGE
+api-5b876fcbb8-kdcfm                                          1/1     Running   0          46m
+frontend-6d98787d89-mxhks                                     1/1     Running   0          47m
+nginx-f5-ca7f2dd5-nginx-ingress-controller-6f988d8fd9-74h5c   1/1     Running   0          32h
+NAME                                                  STATUS   ROLES    AGE   VERSION
+gke-stockbusters-app-stockbusters-app-4175f49e-nvbl   Ready    <none>   32h   v1.33.5-gke.1308000
+
+2. Resource Usage (Before Scaling)
+-----------------------------------
+NAME                                                  CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)
+gke-stockbusters-app-stockbusters-app-4175f49e-nvbl   95m          4%       3260Mi          54%
+NAME                                                          CPU(cores)   MEMORY(bytes)
+api-5b876fcbb8-kdcfm                                          2m           552Mi
+frontend-6d98787d89-mxhks                                     1m           33Mi
+nginx-f5-ca7f2dd5-nginx-ingress-controller-6f988d8fd9-74h5c   2m           30Mi
+
+3. Scaling to 3 replicas...
+-----------------------------------
+deployment.apps/api scaled
+deployment.apps/frontend scaled
+Waiting for pods to be ready...
+
+4. Scaled State (3 replicas each)
+-----------------------------------
+NAME                                                          READY   STATUS    RESTARTS   AGE
+api-5b876fcbb8-55djf                                          1/1     Running   0          61s
+api-5b876fcbb8-648wr                                          1/1     Running   0          61s
+api-5b876fcbb8-kdcfm                                          1/1     Running   0          48m
+frontend-6d98787d89-65gjq                                     1/1     Running   0          60s
+frontend-6d98787d89-dljc5                                     1/1     Running   0          60s
+frontend-6d98787d89-mxhks                                     1/1     Running   0          48m
+nginx-f5-ca7f2dd5-nginx-ingress-controller-6f988d8fd9-74h5c   1/1     Running   0          32h
+
+5. Resource Usage (After Scaling)
+-----------------------------------
+NAME                                                          CPU(cores)   MEMORY(bytes)
+api-5b876fcbb8-55djf                                          796m         546Mi
+api-5b876fcbb8-648wr                                          595m         538Mi
+api-5b876fcbb8-kdcfm                                          2m           551Mi
+frontend-6d98787d89-dljc5                                     7m           30Mi
+frontend-6d98787d89-mxhks                                     1m           33Mi
+nginx-f5-ca7f2dd5-nginx-ingress-controller-6f988d8fd9-74h5c   1m           29Mi
+
+6. Running Load Test (1000 requests, 50 concurrent)...
+-----------------------------------
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 34.60.47.248.sslip.io (be patient)
+Completed 100 requests
+Completed 200 requests
+Completed 300 requests
+Completed 400 requests
+Completed 500 requests
+Completed 600 requests
+Completed 700 requests
+Completed 800 requests
+Completed 900 requests
+Completed 1000 requests
+Finished 1000 requests
+
+
+Server Software:        nginx/1.29.1
+Server Hostname:        34.60.47.248.sslip.io
+Server Port:            80
+
+Document Path:          /
+Document Length:        14472 bytes
+
+Concurrency Level:      50
+Time taken for tests:   7.343 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      14910000 bytes
+HTML transferred:       14472000 bytes
+Requests per second:    136.18 [#/sec] (mean)
+Time per request:       367.153 [ms] (mean)
+Time per request:       7.343 [ms] (mean, across all concurrent requests)
+Transfer rate:          1982.90 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:       45  157 109.5    145    1211
+Processing:    50  193  76.7    187     528
+Waiting:       49  186  76.5    182     526
+Total:        108  350 117.8    335    1499
+
+Percentage of the requests served within a certain time (ms)
+  50%    335
+  66%    369
+  75%    388
+  80%    404
+  90%    445
+  95%    488
+  98%    538
+  99%    593
+ 100%   1499 (longest request)
+
+7. Load Balancer & Services Status
+-----------------------------------
+NAME                                         TYPE           CLUSTER-IP       EXTERNAL-IP    PORT(S)                      AGE
+api                                          ClusterIP      34.118.227.238   <none>         9000/TCP                     32h
+frontend                                     ClusterIP      34.118.235.146   <none>         3000/TCP                     32h
+nginx-f5-ca7f2dd5-nginx-ingress-controller   LoadBalancer   34.118.236.123   34.60.47.248   80:31787/TCP,443:31741/TCP   32h
+NAME                       CLASS   HOSTS                   ADDRESS        PORTS   AGE
+stockbusters-app-ingress   nginx   34.60.47.248.sslip.io   34.60.47.248   80      32h
+
+==========================================
+Demo Complete!
+==========================================

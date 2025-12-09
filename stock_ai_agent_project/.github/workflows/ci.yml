@@ -1,0 +1,1627 @@
+# Unified CI/CD Pipeline for RAG and Quantamental Components
+# Optimized with unified matrix strategy, path-based conditionals, and reusable actions
+# Unified coverage report committed to coverage/ (combines both components)
+# Triggers CD Pipeline when CI pipeline completes successfully
+
+name: Unified CI Pipeline
+
+# Prevent multiple workflows from running simultaneously for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    paths:
+      - 'src/rag/**'
+      - 'src/quantamental/**'
+      - 'src/api-service/**'
+      - '.github/workflows/ci.yml'
+    branches: [main, develop, Milestone5]
+  pull_request:
+    paths:
+      - 'src/rag/**'
+      - 'src/quantamental/**'
+      - 'src/api-service/**'
+      - '.github/workflows/ci.yml'
+    branches: [main, develop, Milestone5]
+  workflow_dispatch:  # Allow manual triggering
+
+# Set default permissions
+permissions:
+  contents: write  # Required for committing coverage reports
+  pull-requests: write  # Required for posting PR comments
+  packages: write  # Required for pushing to GHCR
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Detect which components changed (optimization: skip unchanged components)
+  detect-changes:
+    name: Detect Changed Components
+    runs-on: ubuntu-latest
+    outputs:
+      rag: ${{ steps.filter.outputs.rag }}
+      quantamental: ${{ steps.filter.outputs.quantamental }}
+      api-service: ${{ steps.filter.outputs.api-service }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better change detection
+
+      - name: Check changed files
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            rag:
+              - 'src/rag/**'
+            quantamental:
+              - 'src/quantamental/**'
+            api-service:
+              - 'src/api-service/**'
+      
+      - name: Debug change detection
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "RAG changed: ${{ steps.filter.outputs.rag }}"
+          echo "Quantamental changed: ${{ steps.filter.outputs.quantamental }}"
+          echo "API-service changed: ${{ steps.filter.outputs.api-service }}"
+
+  # Unified build job with matrix strategy
+  build:
+    name: Build ${{ matrix.component }} Docker Image
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [rag, quantamental, api-service]
+        include:
+          - component: rag
+            dockerfile: ./src/rag/Dockerfile
+            context: .
+            image-name: rag-service
+            test-path: src/rag
+          - component: quantamental
+            dockerfile: src/quantamental/Dockerfile
+            context: src/quantamental
+            image-name: quantamental-service
+            test-path: src/quantamental
+          - component: api-service
+            dockerfile: src/api-service/Dockerfile
+            context: src/api-service
+            image-name: api-service
+            test-path: src/api-service
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Check if component changed
+        id: check-component
+        run: |
+          if [ "${{ matrix.component }}" = "rag" ]; then
+            CHANGED="${{ needs.detect-changes.outputs.rag }}"
+          elif [ "${{ matrix.component }}" = "quantamental" ]; then
+            CHANGED="${{ needs.detect-changes.outputs.quantamental }}"
+          else
+            CHANGED="${{ needs.detect-changes.outputs.api-service }}"
+          fi
+          if [ "$CHANGED" != "true" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "⏭️ Component ${{ matrix.component }} did not change, skipping build"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        if: steps.check-component.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: steps.check-component.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check-component.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        if: steps.check-component.outputs.skip != 'true'
+        id: image-name
+        run: |
+          IMAGE_NAME=$(echo "${{ github.repository }}/${{ matrix.image-name }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata
+        if: steps.check-component.outputs.skip != 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.name }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Create dummy secrets (RAG and API-service only)
+        if: steps.check-component.outputs.skip != 'true' && (matrix.component == 'rag' || matrix.component == 'api-service')
+        run: |
+          mkdir -p secrets
+          if [ ! -f secrets/gcs-key.json ]; then
+            echo '{}' > secrets/gcs-key.json
+          fi
+          if [ ! -f secrets/stock-busters-service-account.json ]; then
+            echo '{}' > secrets/stock-busters-service-account.json
+          fi
+
+      - name: Build and push Docker image
+        if: steps.check-component.outputs.skip != 'true'
+        uses: docker/build-push-action@v5
+        id: build
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+        env:
+          DOCKER_BUILDKIT: 1
+        timeout-minutes: 10
+
+  # Unified test job with matrix strategy (component + test-type)
+  tests:
+    name: ${{ matrix.component }} Tests - ${{ matrix.test-type }}
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [rag, quantamental, api-service]
+        test-type: [lint-unit, integration, system]
+        include:
+          # RAG configuration
+          - component: rag
+            test-type: lint-unit
+            image-name: rag-service
+            dockerfile: ./src/rag/Dockerfile
+            context: .
+            test-path: tests/unit/
+            coverage-path: src/rag/coverage
+            python-version: 3.12
+            venv-path: /.venv/lib/python3.12/site-packages
+          - component: rag
+            test-type: integration
+            image-name: rag-service
+            test-path: tests/integration/
+            python-version: 3.12
+            venv-path: /.venv/lib/python3.12/site-packages
+          - component: rag
+            test-type: system
+            image-name: rag-service
+            test-path: tests/system/
+            python-version: 3.12
+            venv-path: /.venv/lib/python3.12/site-packages
+          # Quantamental configuration
+          - component: quantamental
+            test-type: lint-unit
+            image-name: quantamental-service
+            dockerfile: src/quantamental/Dockerfile
+            context: src/quantamental
+            test-path: tests/
+            coverage-path: src/quantamental/coverage
+            python-version: 3.11
+            venv-path: /root/.local/lib/python3.11/site-packages
+          - component: quantamental
+            test-type: integration
+            image-name: quantamental-service
+            test-path: tests/
+            python-version: 3.11
+            venv-path: /root/.local/lib/python3.11/site-packages
+          - component: quantamental
+            test-type: system
+            image-name: quantamental-service
+            test-path: tests/
+            python-version: 3.11
+            venv-path: /root/.local/lib/python3.11/site-packages
+          # API-service configuration
+          - component: api-service
+            test-type: lint-unit
+            image-name: api-service
+            dockerfile: src/api-service/Dockerfile
+            context: src/api-service
+            test-path: tests/
+            coverage-path: src/api-service/coverage
+            python-version: 3.12
+            venv-path: /home/app/.venv/lib/python3.12/site-packages
+          - component: api-service
+            test-type: integration
+            image-name: api-service
+            test-path: tests/
+            python-version: 3.12
+            venv-path: /home/app/.venv/lib/python3.12/site-packages
+          - component: api-service
+            test-type: system
+            image-name: api-service
+            test-path: tests/
+            python-version: 3.12
+            venv-path: /home/app/.venv/lib/python3.12/site-packages
+    timeout-minutes: 10
+    outputs:
+      coverage_percentage: ${{ steps.extract-coverage.outputs.coverage }}
+      branch_coverage: ${{ steps.extract-coverage.outputs.branch_coverage }}
+    steps:
+      - name: Check if component changed and should run
+        id: check-run
+        run: |
+          # Check if component changed
+          if [ "${{ matrix.component }}" = "rag" ]; then
+            CHANGED="${{ needs.detect-changes.outputs.rag }}"
+          elif [ "${{ matrix.component }}" = "quantamental" ]; then
+            CHANGED="${{ needs.detect-changes.outputs.quantamental }}"
+          else
+            CHANGED="${{ needs.detect-changes.outputs.api-service }}"
+          fi
+          
+          # Check if we should skip
+          SKIP=false
+          if [ "$CHANGED" != "true" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            SKIP=true
+          fi
+          
+          # Check system test condition
+          if [ "${{ matrix.test-type }}" = "system" ]; then
+            if [ "${{ github.ref }}" != "refs/heads/main" ] && [ "${{ github.ref }}" != "refs/heads/develop" ] && [ "${{ github.ref }}" != "refs/heads/Milestone5" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+              SKIP=true
+            fi
+          fi
+          
+          if [ "$SKIP" = "true" ]; then
+            echo "⏭️ Skipping ${{ matrix.component }} ${{ matrix.test-type }} tests"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        if: steps.check-run.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check-run.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        if: steps.check-run.outputs.skip != 'true'
+        id: image-name
+        run: |
+          IMAGE_NAME=$(echo "${{ github.repository }}/${{ matrix.image-name }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Pull Docker image
+        if: steps.check-run.outputs.skip != 'true'
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ steps.image-name.outputs.name }}:${{ github.sha }} || echo "Image not found, will be built"
+          docker tag ${{ env.REGISTRY }}/${{ steps.image-name.outputs.name }}:${{ github.sha }} ${{ matrix.image-name }}:${{ github.sha }} || true
+
+      - name: Run lint and unit tests
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'lint-unit'
+        run: |
+          mkdir -p ${{ matrix.coverage-path }}
+          
+          # Run linting
+          if [ "${{ matrix.component }}" = "rag" ]; then
+            docker run --rm ${{ matrix.image-name }}:${{ github.sha }} sh -c \
+              "black --check --line-length 120 --exclude '/(__pycache__|\.venv|venv|_archived)/' . && flake8 --max-line-length=120 --extend-ignore=E203,W503,E501,E722,W504,E402,F401,F841,F811,F821,F541,E231 --exclude=_archived ."
+            # Run unit tests with coverage
+            docker run --rm -v ${{ github.workspace }}/${{ matrix.coverage-path }}:/workspace/coverage \
+              -e PYTHONPATH="${{ matrix.venv-path }}:$PYTHONPATH" \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              pytest ${{ matrix.test-path }} --cov=rag --cov-branch --cov-report=term --cov-report=xml:/workspace/coverage/coverage.xml --cov-report=html:/workspace/coverage/htmlcov -m unit --maxfail=2 -x --tb=line -q
+          else
+            # Run linting - override entrypoint for api-service to prevent server from starting
+            # Run as root (like RAG) to avoid permission issues with mounted volumes
+            if [ "${{ matrix.component }}" = "api-service" ]; then
+              docker run --rm --entrypoint="" --user root -w /app ${{ matrix.image-name }}:${{ github.sha }} \
+                /bin/bash -c "export PATH=/home/app/.venv/bin:$PATH && python -m black --check . && python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics && python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics"
+            else
+              docker run --rm -w /app ${{ matrix.image-name }}:${{ github.sha }} sh -c \
+                "black --check . && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics && flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics"
+            fi
+            # Run unit tests with coverage
+            # For api-service, use --cov=api (source is in /app/api/), for others use --cov=.
+            # For api-service, override entrypoint to prevent server from starting
+            # Run as root (like RAG) to avoid permission issues with mounted volumes
+            if [ "${{ matrix.component }}" = "api-service" ]; then
+              docker run --rm --entrypoint="" --user root -v ${{ github.workspace }}/${{ matrix.coverage-path }}:/workspace/coverage \
+                -w /app \
+                ${{ matrix.image-name }}:${{ github.sha }} \
+                /bin/bash -c "export PATH=/home/app/.venv/bin:$PATH && python -m pytest ${{ matrix.test-path }} --cov=api --cov-branch --cov-report=term --cov-report=xml:/workspace/coverage/coverage.xml --cov-report=html:/workspace/coverage/htmlcov -m unit --maxfail=2 -x --tb=line -q"
+            else
+              # Quantamental unit tests - pass environment variables into container
+              docker run --rm -v ${{ github.workspace }}/${{ matrix.coverage-path }}:/workspace/coverage \
+                -w /app \
+                -e FMP_API_KEY="$FMP_API_KEY" \
+                -e WANDB_API_KEY="$WANDB_API_KEY" \
+                -e GCS_BUCKET_NAME="$GCS_BUCKET_NAME" \
+                ${{ matrix.image-name }}:${{ github.sha }} \
+                pytest ${{ matrix.test-path }} --cov=. --cov-branch --cov-report=term --cov-report=xml:/workspace/coverage/coverage.xml --cov-report=html:/workspace/coverage/htmlcov -m unit --maxfail=2 -x --tb=line -q
+            fi
+          fi
+          
+          # Verify coverage files were generated
+          echo "🔍 Verifying coverage files were generated..."
+          if [ ! -f "${{ matrix.coverage-path }}/coverage.xml" ]; then
+            echo "❌ ERROR: Coverage XML file not found at ${{ matrix.coverage-path }}/coverage.xml"
+            echo "Directory contents:"
+            ls -la "${{ matrix.coverage-path }}" || echo "Directory does not exist"
+            exit 1
+          fi
+          
+          # Verify XML file is valid and not empty
+          if [ ! -s "${{ matrix.coverage-path }}/coverage.xml" ]; then
+            echo "❌ ERROR: Coverage XML file is empty at ${{ matrix.coverage-path }}/coverage.xml"
+            exit 1
+          fi
+          
+          # Verify XML file is well-formed
+          if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('${{ matrix.coverage-path }}/coverage.xml')" 2>/dev/null; then
+            echo "❌ ERROR: Coverage XML file is malformed at ${{ matrix.coverage-path }}/coverage.xml"
+            exit 1
+          fi
+          
+          echo "✅ Coverage XML file verified: ${{ matrix.coverage-path }}/coverage.xml"
+          
+          # Verify HTML coverage directory exists and has files
+          if [ ! -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+            echo "⚠️  WARNING: HTML coverage directory not found at ${{ matrix.coverage-path }}/htmlcov"
+            echo "Checking if directory exists at all:"
+            ls -la "${{ matrix.coverage-path }}/" || echo "Coverage path does not exist"
+          else
+            HTML_FILE_COUNT=$(find "${{ matrix.coverage-path }}/htmlcov" -type f 2>/dev/null | wc -l || echo "0")
+            echo "✅ HTML coverage directory verified: ${{ matrix.coverage-path }}/htmlcov ($HTML_FILE_COUNT files)"
+            if [ "$HTML_FILE_COUNT" -eq 0 ]; then
+              echo "⚠️  WARNING: HTML coverage directory exists but is empty"
+              echo "Directory contents:"
+              ls -la "${{ matrix.coverage-path }}/htmlcov/" || true
+            fi
+          fi
+        env:
+          CHROMADB_HOST: localhost
+          CHROMADB_PORT: "8000"
+          VECTOR_COLLECTION: test_collection
+          GCS_BUCKET_NAME: ""
+          EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
+          ENABLE_CACHE: "0"
+          AUTO_START_CHROMADB: "0"
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+
+      - name: Debug coverage file location
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'lint-unit' && always()
+        run: |
+          echo "🔍 Debugging coverage file location..."
+          echo "Coverage path: ${{ matrix.coverage-path }}"
+          echo "Full path: ${{ github.workspace }}/${{ matrix.coverage-path }}"
+          echo ""
+          echo "Checking if coverage directory exists:"
+          ls -la ${{ matrix.coverage-path }} || echo "Directory does not exist"
+          echo ""
+          echo "Checking for coverage.xml:"
+          if [ -f "${{ matrix.coverage-path }}/coverage.xml" ]; then
+            echo "✅ coverage.xml FOUND"
+            ls -lh "${{ matrix.coverage-path }}/coverage.xml"
+            echo ""
+            echo "File contents (first 20 lines):"
+            head -n 20 "${{ matrix.coverage-path }}/coverage.xml" || echo "Could not read file"
+          else
+            echo "❌ coverage.xml NOT FOUND"
+            echo ""
+            echo "Contents of coverage directory:"
+            find "${{ matrix.coverage-path }}" -type f 2>/dev/null || echo "Could not list directory"
+          fi
+
+      - name: Run integration tests
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'integration'
+        run: |
+          if [ "${{ matrix.component }}" = "rag" ]; then
+            docker run --rm -e PYTHONPATH="${{ matrix.venv-path }}:$PYTHONPATH" \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              pytest ${{ matrix.test-path }} --tb=line -m integration --maxfail=1 -x -q
+          elif [ "${{ matrix.component }}" = "api-service" ]; then
+            # Override entrypoint to prevent server from starting
+            # Run as root (like RAG) to avoid permission issues
+            docker run --rm --entrypoint="" --user root -w /app \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              /bin/bash -c "export PATH=/home/app/.venv/bin:$PATH && python -m pytest ${{ matrix.test-path }} --tb=line -m integration --maxfail=1 -x -q"
+          else
+            # Quantamental tests - pass environment variables into container
+            docker run --rm -w /app \
+              -e FMP_API_KEY="$FMP_API_KEY" \
+              -e WANDB_API_KEY="$WANDB_API_KEY" \
+              -e GCS_BUCKET_NAME="$GCS_BUCKET_NAME" \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              pytest ${{ matrix.test-path }} --tb=line -m integration --maxfail=1 -x -q
+          fi
+        env:
+          CHROMADB_HOST: localhost
+          CHROMADB_PORT: "8000"
+          VECTOR_COLLECTION: test_collection
+          EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
+          ENABLE_CACHE: "0"
+          AUTO_START_CHROMADB: "0"
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+
+      - name: Run system tests
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'system'
+        run: |
+          if [ "${{ matrix.component }}" = "rag" ]; then
+            # Start server
+            docker run -d --name rag-server -p 9000:9000 -p 8000:8000 \
+              -e DEV=1 \
+              -e AUTO_START_CHROMADB=0 \
+              -e GCS_BUCKET_NAME="" \
+              -e VECTOR_COLLECTION=test_collection \
+              -e EMBEDDING_MODEL=BAAI/bge-small-en-v1.5 \
+              -e ENABLE_CACHE=0 \
+              ${{ matrix.image-name }}:${{ github.sha }}
+            # Wait for server
+            for i in {1..10}; do
+              if curl -f -s --max-time 2 http://localhost:9000/health > /dev/null 2>&1; then
+                echo "✅ Server ready"
+                break
+              fi
+              sleep 2
+            done
+            # Run tests
+            docker run --rm --network host -e PYTHONPATH="${{ matrix.venv-path }}:$PYTHONPATH" \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              pytest ${{ matrix.test-path }} --tb=line -m system --maxfail=1 -x -q
+            # Cleanup
+            docker stop rag-server || true
+            docker rm rag-server || true
+          elif [ "${{ matrix.component }}" = "api-service" ]; then
+            # For api-service system tests, we need to start the server first
+            # Start server in background
+            docker run -d --name api-server -p 9000:9000 \
+              -e DEV=1 \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              /bin/bash -c "export PATH=/home/app/.venv/bin:$PATH && python -m uvicorn api.service:app --host 0.0.0.0 --port 9000"
+            # Wait for server
+            for i in {1..10}; do
+              if curl -f -s --max-time 2 http://localhost:9000/ > /dev/null 2>&1; then
+                echo "✅ API server ready"
+                break
+              fi
+              sleep 2
+            done
+            # Run tests
+            # Run as root (like RAG) to avoid permission issues
+            docker run --rm --network host --entrypoint="" --user root -w /app \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              /bin/bash -c "export PATH=/home/app/.venv/bin:$PATH && python -m pytest ${{ matrix.test-path }} --tb=line -m system --maxfail=1 -x -q"
+            # Cleanup
+            docker stop api-server && docker rm api-server || true
+          else
+            # Quantamental system tests - pass environment variables into container
+            docker run --rm -w /app \
+              -e FMP_API_KEY="$FMP_API_KEY" \
+              -e WANDB_API_KEY="$WANDB_API_KEY" \
+              -e GCS_BUCKET_NAME="$GCS_BUCKET_NAME" \
+              ${{ matrix.image-name }}:${{ github.sha }} \
+              pytest ${{ matrix.test-path }} --tb=line -m system --maxfail=1 -x -q
+          fi
+        env:
+          API_BASE_URL: http://localhost:9000
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+
+      - name: Extract coverage data
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'lint-unit' && always()
+        id: extract-coverage
+        run: |
+          COVERAGE_XML="${{ matrix.coverage-path }}/coverage.xml"
+          COMPONENT="${{ matrix.component }}"
+          echo "🔍 Extracting coverage data from: $COVERAGE_XML"
+          if [ -f "$COVERAGE_XML" ]; then
+            echo "✅ Coverage file found, extracting data..."
+            # Write Python script to file to avoid YAML parsing issues
+            cat > /tmp/extract_coverage_data.py << SCRIPT_END
+          import xml.etree.ElementTree as ET
+          import sys
+          import os
+          
+          coverage_xml = os.environ.get('COVERAGE_XML', '')
+          component = os.environ.get('COMPONENT', '')
+          
+          try:
+              tree = ET.parse(coverage_xml)
+              root = tree.getroot()
+              
+              line_rate = float(root.get('line-rate', 0))
+              branch_rate = float(root.get('branch-rate', 0))
+              lines_covered = int(root.get('lines-covered', 0))
+              lines_valid = int(root.get('lines-valid', 0))
+              branches_covered = int(root.get('branches-covered', 0))
+              branches_valid = int(root.get('branches-valid', 0))
+              
+              coverage_pct = int(line_rate * 100)
+              branch_pct = int(branch_rate * 100)
+              
+              print(f"coverage={coverage_pct}%")
+              print(f"branch_coverage={branch_pct}")
+              print(f"lines_covered={lines_covered}")
+              print(f"lines_valid={lines_valid}")
+              print(f"branches_covered={branches_covered}")
+              print(f"branches_valid={branches_valid}")
+              print(f"component={component}")
+          except Exception as e:
+              print("coverage=N/A")
+              print("branch_coverage=N/A")
+              print("lines_covered=0")
+              print("lines_valid=0")
+              print("branches_covered=0")
+              print("branches_valid=0")
+              print(f"component={component}")
+          SCRIPT_END
+            
+            # Execute Python script with environment variables and capture output
+            COVERAGE_XML="$COVERAGE_XML" COMPONENT="$COMPONENT" python3 /tmp/extract_coverage_data.py | while IFS='=' read -r key value; do
+              echo "${key}=${value}" >> $GITHUB_OUTPUT
+            done
+            echo "✅ Coverage data extracted successfully"
+          else
+            echo "❌ Coverage file not found at: $COVERAGE_XML"
+            echo "Current directory: $(pwd)"
+            echo "Listing coverage directory:"
+            ls -la "${{ matrix.coverage-path }}" || echo "Directory does not exist"
+            echo "coverage=N/A" >> $GITHUB_OUTPUT
+            echo "branch_coverage=N/A" >> $GITHUB_OUTPUT
+            echo "lines_covered=0" >> $GITHUB_OUTPUT
+            echo "lines_valid=0" >> $GITHUB_OUTPUT
+            echo "branches_covered=0" >> $GITHUB_OUTPUT
+            echo "branches_valid=0" >> $GITHUB_OUTPUT
+            echo "component=${{ matrix.component }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit coverage files (for test-summary job)
+        if: steps.check-run.outputs.skip != 'true' && matrix.test-type == 'lint-unit' && always() && (github.event_name == 'push' || github.event_name == 'pull_request')
+        run: |
+          # Verify coverage file exists before attempting to commit
+          if [ ! -f "${{ matrix.coverage-path }}/coverage.xml" ]; then
+            echo "❌ ERROR: Coverage file not found at ${{ matrix.coverage-path }}/coverage.xml"
+            echo "Cannot commit coverage files. This will cause test-summary job to fail."
+            exit 1
+          fi
+          
+          # Verify file is not empty
+          if [ ! -s "${{ matrix.coverage-path }}/coverage.xml" ]; then
+            echo "❌ ERROR: Coverage file is empty at ${{ matrix.coverage-path }}/coverage.xml"
+            exit 1
+          fi
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Checkout with write permissions
+          git config --local --add safe.directory ${{ github.workspace }}
+          
+          # Add coverage files and verify they were added
+          if ! git add "${{ matrix.coverage-path }}/coverage.xml"; then
+            echo "❌ ERROR: Failed to add coverage.xml to git"
+            exit 1
+          fi
+          
+          if [ -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+            HTML_FILE_COUNT=$(find "${{ matrix.coverage-path }}/htmlcov" -type f 2>/dev/null | wc -l || echo "0")
+            echo "📁 Found $HTML_FILE_COUNT HTML coverage files in ${{ matrix.coverage-path }}/htmlcov"
+            if [ "$HTML_FILE_COUNT" -gt 0 ]; then
+              # Force add htmlcov to override any ignore rules
+              GIT_ADD_OUTPUT=$(git add -f "${{ matrix.coverage-path }}/htmlcov" 2>&1) || true
+              if echo "$GIT_ADD_OUTPUT" | grep -q "ignored by one of your .gitignore files"; then
+                echo "⚠️  WARNING: htmlcov directory is still ignored despite -f flag"
+                echo "Trying to add individual files..."
+                find "${{ matrix.coverage-path }}/htmlcov" -type f -exec git add -f {} \; 2>/dev/null || true
+              else
+                echo "✅ Added htmlcov directory to git ($HTML_FILE_COUNT files)"
+              fi
+            else
+              echo "⚠️  WARNING: htmlcov directory exists but is empty"
+            fi
+          else
+            echo "⚠️  WARNING: htmlcov directory not found at ${{ matrix.coverage-path }}/htmlcov"
+          fi
+          
+          # Verify files are staged
+          if [ -z "$(git status --porcelain ${{ matrix.coverage-path }}/)" ]; then
+            echo "ℹ️ No coverage changes to commit for ${{ matrix.component }} (files may already be committed)"
+          else
+            # Fix permissions on HTML files before pulling (Docker creates them as root)
+            if [ -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+              sudo chown -R runner:runner "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+              chmod -R u+w "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+            fi
+            
+            # Ensure we're on the correct branch
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+            if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+              # We're in detached HEAD state, checkout the branch
+              BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+              git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME" 2>/dev/null || true
+            fi
+            
+            # Stash current changes before pulling
+            git stash push -m "temp coverage files" "${{ matrix.coverage-path }}/" 2>/dev/null || true
+            
+            # Pull latest changes (use merge instead of rebase to avoid permission issues)
+            git pull --no-edit --no-rebase || git pull --no-edit || echo "⚠️  WARNING: Could not pull latest changes"
+            
+            # Restore stashed changes
+            git stash pop 2>/dev/null || true
+            
+            # Re-stage files
+            git add "${{ matrix.coverage-path }}/coverage.xml" || true
+            if [ -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+              HTML_FILE_COUNT=$(find "${{ matrix.coverage-path }}/htmlcov" -type f 2>/dev/null | wc -l || echo "0")
+              if [ "$HTML_FILE_COUNT" -gt 0 ]; then
+                # Fix permissions again after pull
+                sudo chown -R runner:runner "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+                chmod -R u+w "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+                GIT_ADD_OUTPUT=$(git add -f "${{ matrix.coverage-path }}/htmlcov" 2>&1) || true
+                if echo "$GIT_ADD_OUTPUT" | grep -q "ignored by one of your .gitignore files"; then
+                  echo "⚠️  WARNING: htmlcov still ignored, trying individual files..."
+                  find "${{ matrix.coverage-path }}/htmlcov" -type f -exec git add -f {} \; 2>/dev/null || true
+                else
+                  echo "✅ Re-added htmlcov directory ($HTML_FILE_COUNT files)"
+                fi
+              fi
+            fi
+            
+            # Commit and verify success
+            if ! git commit -m "Update ${{ matrix.component }} coverage report [skip ci]"; then
+              echo "❌ ERROR: Failed to commit coverage files for ${{ matrix.component }}"
+              exit 1
+            fi
+            
+            # Push and verify success (retry once if it fails due to remote changes)
+            if ! git push; then
+              echo "⚠️  Push failed, pulling latest changes and retrying..."
+              
+              # Fix permissions before pulling
+              if [ -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+                sudo chown -R runner:runner "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+                chmod -R u+w "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+              fi
+              
+              # Ensure we're on the correct branch
+              CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+              if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+                BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+                git checkout "$BRANCH_NAME" 2>/dev/null || true
+              fi
+              
+              # Use merge instead of rebase to avoid permission issues
+              git pull --no-edit --no-rebase || git pull --no-edit || true
+              
+              # Re-add files
+              git add "${{ matrix.coverage-path }}/coverage.xml" || true
+              if [ -d "${{ matrix.coverage-path }}/htmlcov" ]; then
+                sudo chown -R runner:runner "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+                chmod -R u+w "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+                git add -f "${{ matrix.coverage-path }}/htmlcov" 2>/dev/null || true
+              fi
+              
+              git commit -m "Update ${{ matrix.component }} coverage report [skip ci]" || true
+              if ! git push; then
+                echo "❌ ERROR: Failed to push coverage files for ${{ matrix.component }} after retry"
+                echo "This will cause test-summary job to fail to find coverage files."
+                exit 1
+              fi
+            fi
+            
+            echo "✅ Coverage files committed and pushed successfully for ${{ matrix.component }}"
+            
+            # Verify the commit was successful by checking git log
+            if ! git log -1 --oneline | grep -q "Update ${{ matrix.component }} coverage report"; then
+              echo "⚠️  WARNING: Commit message not found in git log, but commit appeared to succeed"
+            fi
+          fi
+
+  # Test Summary and Coverage Commit
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build, tests]
+    if: always()
+    permissions:
+      contents: write  # Required for committing coverage reports
+      actions: write  # Required for triggering CD workflow
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get RAG coverage
+        id: rag-coverage
+        run: |
+          # Extract coverage from lint-unit matrix job for RAG
+          RAG_COV="N/A"
+          RAG_BRANCH="N/A"
+          # Try to get from job outputs (matrix jobs need special handling)
+          echo "rag_coverage=$RAG_COV" >> $GITHUB_OUTPUT
+          echo "rag_branch=$RAG_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Get Quantamental coverage
+        id: quant-coverage
+        run: |
+          # Extract coverage from lint-unit matrix job for quantamental
+          QUANT_COV="N/A"
+          QUANT_BRANCH="N/A"
+          echo "quant_coverage=$QUANT_COV" >> $GITHUB_OUTPUT
+          echo "quant_branch=$QUANT_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Combine and commit unified coverage report
+        if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Pull latest changes to get HTML coverage files committed by test jobs
+          echo "📥 Pulling latest changes to get HTML coverage files..."
+          git pull --rebase --no-edit || git pull --no-edit || echo "⚠️  Could not pull latest changes (may be first commit)"
+          
+          mkdir -p coverage
+          
+          # Check if we have coverage files to combine
+          HAS_RAG=false
+          HAS_QUANT=false
+          HAS_API=false
+          
+          if [ -f "src/rag/coverage/coverage.xml" ]; then
+            HAS_RAG=true
+            echo "✅ Found RAG coverage.xml"
+          fi
+          
+          if [ -f "src/quantamental/coverage/coverage.xml" ]; then
+            HAS_QUANT=true
+            echo "✅ Found Quantamental coverage.xml"
+          fi
+          
+          if [ -f "src/api-service/coverage/coverage.xml" ]; then
+            HAS_API=true
+            echo "✅ Found API-service coverage.xml"
+          fi
+          
+          # Combine coverage reports
+          if [ "$HAS_RAG" = true ] || [ "$HAS_QUANT" = true ] || [ "$HAS_API" = true ]; then
+            echo "📊 Combining coverage reports..."
+            
+            if [ "$HAS_RAG" = true ] && [ "$HAS_QUANT" = true ]; then
+              # Both components have coverage - combine them
+              echo "Combining RAG and Quantamental coverage..."
+              
+              # Verify both files are readable before combining
+              if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('src/rag/coverage/coverage.xml')" 2>/dev/null; then
+                echo "❌ ERROR: RAG coverage.xml is malformed or unreadable"
+                exit 1
+              fi
+              
+              if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('src/quantamental/coverage/coverage.xml')" 2>/dev/null; then
+                echo "❌ ERROR: Quantamental coverage.xml is malformed or unreadable"
+                exit 1
+              fi
+              
+              # Install coverage tool if not available
+              pip install coverage --quiet || true
+              
+              # Combine coverage using Python (simplified approach - calculate percentages only)
+              if ! python3 -c 'import xml.etree.ElementTree as ET; import time; rag=ET.parse("src/rag/coverage/coverage.xml").getroot(); quant=ET.parse("src/quantamental/coverage/coverage.xml").getroot(); rlc=int(rag.get("lines-covered",0)); rlv=int(rag.get("lines-valid",0)); rbc=int(rag.get("branches-covered",0)); rbv=int(rag.get("branches-valid",0)); qlc=int(quant.get("lines-covered",0)); qlv=int(quant.get("lines-valid",0)); qbc=int(quant.get("branches-covered",0)); qbv=int(quant.get("branches-valid",0)); tlc=rlc+qlc; tlv=rlv+qlv; tbc=rbc+qbc; tbv=rbv+qbv; clr=tlc/tlv if tlv>0 else 0.0; cbr=tbc/tbv if tbv>0 else 0.0; root=ET.Element("coverage"); root.set("version",rag.get("version","1.0")); root.set("line-rate",str(clr)); root.set("branch-rate",str(cbr)); root.set("lines-covered",str(tlc)); root.set("lines-valid",str(tlv)); root.set("branches-covered",str(tbc)); root.set("branches-valid",str(tbv)); root.set("timestamp",str(int(time.time()*1000))); src=ET.SubElement(root,"sources"); ET.SubElement(src,"source").text="src/rag"; ET.SubElement(src,"source").text="src/quantamental"; pkg=ET.SubElement(root,"packages"); rp=rag.find("packages"); [pkg.append(ET.Element("package",{"name":"rag/"+p.get("name",""),"line-rate":p.get("line-rate","0"),"branch-rate":p.get("branch-rate","0"),"complexity":p.get("complexity","0")})) for p in (rp.findall("package") if rp is not None else [])]; qp=quant.find("packages"); [pkg.append(ET.Element("package",{"name":"quantamental/"+p.get("name",""),"line-rate":p.get("line-rate","0"),"branch-rate":p.get("branch-rate","0"),"complexity":p.get("complexity","0")})) for p in (qp.findall("package") if qp is not None else [])]; ET.ElementTree(root).write("coverage/coverage.xml",encoding="utf-8",xml_declaration=True); print("✅ Combined coverage: {:.1f}% (lines), {:.1f}% (branches)".format(clr*100,cbr*100))'; then
+                echo "❌ ERROR: Failed to combine coverage reports"
+                exit 1
+              fi
+              
+            elif [ "$HAS_RAG" = true ]; then
+              # Only RAG coverage
+              if ! cp src/rag/coverage/coverage.xml coverage/coverage.xml; then
+                echo "❌ ERROR: Failed to copy RAG coverage.xml"
+                exit 1
+              fi
+              echo "✅ Using RAG coverage only"
+            elif [ "$HAS_QUANT" = true ]; then
+              # Only Quantamental coverage
+              if ! cp src/quantamental/coverage/coverage.xml coverage/coverage.xml; then
+                echo "❌ ERROR: Failed to copy Quantamental coverage.xml"
+                exit 1
+              fi
+              echo "✅ Using Quantamental coverage only"
+            elif [ "$HAS_API" = true ]; then
+              # Only API-service coverage
+              if ! cp src/api-service/coverage/coverage.xml coverage/coverage.xml; then
+                echo "❌ ERROR: Failed to copy API-service coverage.xml"
+                exit 1
+              fi
+              echo "✅ Using API-service coverage only"
+            fi
+            
+            # If we have multiple components, combine them using Python script
+            COMPONENT_COUNT=0
+            [ "$HAS_RAG" = true ] && COMPONENT_COUNT=$((COMPONENT_COUNT + 1))
+            [ "$HAS_QUANT" = true ] && COMPONENT_COUNT=$((COMPONENT_COUNT + 1))
+            [ "$HAS_API" = true ] && COMPONENT_COUNT=$((COMPONENT_COUNT + 1))
+            
+            if [ $COMPONENT_COUNT -gt 1 ]; then
+              echo "Combining $COMPONENT_COUNT components..."
+              
+              # Write Python script to file to avoid YAML parsing issues
+              cat > /tmp/combine_coverage.py << SCRIPT_END
+          import xml.etree.ElementTree as ET
+          import time
+          import sys
+          
+          files = []
+          if sys.argv[1] == 'true':
+              files.append(('src/rag/coverage/coverage.xml', 'rag'))
+          if sys.argv[2] == 'true':
+              files.append(('src/quantamental/coverage/coverage.xml', 'quantamental'))
+          if sys.argv[3] == 'true':
+              files.append(('src/api-service/coverage/coverage.xml', 'api-service'))
+          
+          if len(files) == 0:
+              print("No coverage files to combine")
+              sys.exit(1)
+          
+          # Parse all coverage files
+          roots = []
+          for filepath, name in files:
+              try:
+                  tree = ET.parse(filepath)
+                  roots.append((tree.getroot(), name))
+              except Exception as e:
+                  print(f"Error parsing {filepath}: {e}")
+                  sys.exit(1)
+          
+          # Sum up coverage metrics
+          total_lines_covered = 0
+          total_lines_valid = 0
+          total_branches_covered = 0
+          total_branches_valid = 0
+          
+          # Create combined root
+          if len(roots) == 0:
+              print("No valid coverage files found to combine")
+              sys.exit(1)
+          
+          combined_root = ET.Element("coverage")
+          combined_root.set("version", roots[0][0].get("version", "1.0"))
+          
+          # Sum metrics from all components
+          for root, name in roots:
+              total_lines_covered += int(root.get("lines-covered", 0))
+              total_lines_valid += int(root.get("lines-valid", 0))
+              total_branches_covered += int(root.get("branches-covered", 0))
+              total_branches_valid += int(root.get("branches-valid", 0))
+          
+          # Calculate combined rates
+          line_rate = total_lines_covered / total_lines_valid if total_lines_valid > 0 else 0.0
+          branch_rate = total_branches_covered / total_branches_valid if total_branches_valid > 0 else 0.0
+          
+          # Set combined metrics
+          combined_root.set("line-rate", str(line_rate))
+          combined_root.set("branch-rate", str(branch_rate))
+          combined_root.set("lines-covered", str(total_lines_covered))
+          combined_root.set("lines-valid", str(total_lines_valid))
+          combined_root.set("branches-covered", str(total_branches_covered))
+          combined_root.set("branches-valid", str(total_branches_valid))
+          combined_root.set("timestamp", str(int(time.time() * 1000)))
+          
+          # Add sources
+          sources = ET.SubElement(combined_root, "sources")
+          for _, name in roots:
+              ET.SubElement(sources, "source").text = f"src/{name}"
+          
+          # Add packages from all components
+          packages = ET.SubElement(combined_root, "packages")
+          for root, name in roots:
+              root_packages = root.find("packages")
+              if root_packages is not None:
+                  for pkg in root_packages.findall("package"):
+                      pkg_elem = ET.Element("package")
+                      pkg_elem.set("name", f"{name}/{pkg.get('name', '')}")
+                      pkg_elem.set("line-rate", pkg.get("line-rate", "0"))
+                      pkg_elem.set("branch-rate", pkg.get("branch-rate", "0"))
+                      pkg_elem.set("complexity", pkg.get("complexity", "0"))
+                      packages.append(pkg_elem)
+          
+          # Write combined coverage
+          ET.ElementTree(combined_root).write("coverage/coverage.xml", encoding="utf-8", xml_declaration=True)
+          print(f"✅ Combined coverage: {line_rate*100:.1f}% (lines), {branch_rate*100:.1f}% (branches)")
+          SCRIPT_END
+              
+              # Strip leading spaces from Python script (heredoc preserves YAML indentation)
+              # Find minimum indentation and strip it (handles any number of leading spaces)
+              python3 -c "lines=open('/tmp/combine_coverage.py').readlines(); non_empty=[l for l in lines if l.strip()]; min_indent=min(len(l)-len(l.lstrip(' ')) for l in non_empty) if non_empty else 0; fixed=[l[min_indent:] if l.strip() else l for l in lines]; open('/tmp/combine_coverage.py','w').writelines(fixed)"
+              
+              # Run the combination script
+              if ! python3 /tmp/combine_coverage.py "$HAS_RAG" "$HAS_QUANT" "$HAS_API"; then
+                echo "❌ ERROR: Failed to combine coverage reports"
+                exit 1
+              fi
+            fi
+            
+            # Verify unified coverage file was created
+            if [ ! -f "coverage/coverage.xml" ]; then
+              echo "❌ ERROR: Unified coverage.xml was not created"
+              exit 1
+            fi
+            
+            if [ ! -s "coverage/coverage.xml" ]; then
+              echo "❌ ERROR: Unified coverage.xml is empty"
+              exit 1
+            fi
+            
+            # Verify unified XML is well-formed
+            if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('coverage/coverage.xml')" 2>/dev/null; then
+              echo "❌ ERROR: Unified coverage.xml is malformed"
+              exit 1
+            fi
+            
+            echo "✅ Unified coverage.xml verified"
+            
+            # Debug: Check what HTML coverage directories exist before copying
+            echo "🔍 Checking for component HTML coverage directories:"
+            if [ -d "src/rag/coverage/htmlcov" ]; then
+              RAG_HTML_COUNT=$(find src/rag/coverage/htmlcov -type f 2>/dev/null | wc -l || echo "0")
+              echo "  ✅ src/rag/coverage/htmlcov/ exists ($RAG_HTML_COUNT files)"
+            else
+              echo "  ❌ src/rag/coverage/htmlcov/ does not exist"
+            fi
+            if [ -d "src/quantamental/coverage/htmlcov" ]; then
+              QUANT_HTML_COUNT=$(find src/quantamental/coverage/htmlcov -type f 2>/dev/null | wc -l || echo "0")
+              echo "  ✅ src/quantamental/coverage/htmlcov/ exists ($QUANT_HTML_COUNT files)"
+            else
+              echo "  ❌ src/quantamental/coverage/htmlcov/ does not exist"
+            fi
+            if [ -d "src/api-service/coverage/htmlcov" ]; then
+              API_HTML_COUNT=$(find src/api-service/coverage/htmlcov -type f 2>/dev/null | wc -l || echo "0")
+              echo "  ✅ src/api-service/coverage/htmlcov/ exists ($API_HTML_COUNT files)"
+            else
+              echo "  ❌ src/api-service/coverage/htmlcov/ does not exist"
+            fi
+            
+            # Copy HTML coverage reports based on component count
+            # For multiple components: copy to separate subdirectories
+            # For single component: copy to unified htmlcov directory
+            if [ $COMPONENT_COUNT -gt 1 ]; then
+              # Multiple components: copy to component-specific subdirectories
+              if [ "$HAS_RAG" = true ] && [ -d "src/rag/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/rag/coverage/htmlcov || true
+                rm -rf coverage/htmlcov_rag  # Remove existing to avoid nesting
+                if ! cp -r src/rag/coverage/htmlcov coverage/htmlcov_rag; then
+                  echo "❌ ERROR: Failed to copy RAG HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied RAG HTML coverage to coverage/htmlcov_rag/"
+              fi
+              if [ "$HAS_QUANT" = true ] && [ -d "src/quantamental/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/quantamental/coverage/htmlcov || true
+                rm -rf coverage/htmlcov_quantamental  # Remove existing to avoid nesting
+                if ! cp -r src/quantamental/coverage/htmlcov coverage/htmlcov_quantamental; then
+                  echo "❌ ERROR: Failed to copy Quantamental HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied Quantamental HTML coverage to coverage/htmlcov_quantamental/"
+              fi
+              if [ "$HAS_API" = true ] && [ -d "src/api-service/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/api-service/coverage/htmlcov || true
+                rm -rf coverage/htmlcov_api  # Remove existing to avoid nesting
+                if ! cp -r src/api-service/coverage/htmlcov coverage/htmlcov_api; then
+                  echo "❌ ERROR: Failed to copy API-service HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied API-service HTML coverage to coverage/htmlcov_api/"
+              fi
+            else
+              # Single component: copy to unified htmlcov directory
+              if [ "$HAS_RAG" = true ] && [ -d "src/rag/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/rag/coverage/htmlcov || true
+                rm -rf coverage/htmlcov  # Remove existing to avoid nesting
+                if ! cp -r src/rag/coverage/htmlcov coverage/htmlcov; then
+                  echo "❌ ERROR: Failed to copy RAG HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied RAG HTML coverage to coverage/htmlcov/"
+              elif [ "$HAS_QUANT" = true ] && [ -d "src/quantamental/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/quantamental/coverage/htmlcov || true
+                rm -rf coverage/htmlcov  # Remove existing to avoid nesting
+                if ! cp -r src/quantamental/coverage/htmlcov coverage/htmlcov; then
+                  echo "❌ ERROR: Failed to copy Quantamental HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied Quantamental HTML coverage to coverage/htmlcov/"
+              elif [ "$HAS_API" = true ] && [ -d "src/api-service/coverage/htmlcov" ]; then
+                sudo chown -R runner:runner src/api-service/coverage/htmlcov || true
+                rm -rf coverage/htmlcov  # Remove existing to avoid nesting
+                if ! cp -r src/api-service/coverage/htmlcov coverage/htmlcov; then
+                  echo "❌ ERROR: Failed to copy API-service HTML coverage"
+                  exit 1
+                fi
+                echo "✅ Copied API-service HTML coverage to coverage/htmlcov/"
+              fi
+            fi
+            
+            # Note: HTML files are already copied above based on component count
+            # No need to copy again here to avoid duplicates
+            
+            echo "✅ Unified coverage report created"
+          else
+            echo "ℹ️ No coverage files found to combine"
+          fi
+          
+          # Verify unified coverage file exists before committing
+          if [ ! -f "coverage/coverage.xml" ]; then
+            echo "❌ ERROR: Unified coverage.xml does not exist. Cannot commit."
+            exit 1
+          fi
+          
+          # List HTML coverage directories that exist
+          echo "📁 Checking for HTML coverage directories:"
+          HTML_FOUND=false
+          if [ -d "coverage/htmlcov" ]; then
+            HTML_COUNT=$(find coverage/htmlcov -type f 2>/dev/null | wc -l || echo "0")
+            echo "  ✅ coverage/htmlcov/ exists ($HTML_COUNT files)"
+            if [ "$HTML_COUNT" -gt 0 ]; then
+              HTML_FOUND=true
+            fi
+          else
+            echo "  ⚠️  coverage/htmlcov/ does not exist"
+          fi
+          if [ -d "coverage/htmlcov_rag" ]; then
+            RAG_COUNT=$(find coverage/htmlcov_rag -type f 2>/dev/null | wc -l || echo "0")
+            echo "  ✅ coverage/htmlcov_rag/ exists ($RAG_COUNT files)"
+            if [ "$RAG_COUNT" -gt 0 ]; then
+              HTML_FOUND=true
+            fi
+          fi
+          if [ -d "coverage/htmlcov_quantamental" ]; then
+            QUANT_COUNT=$(find coverage/htmlcov_quantamental -type f 2>/dev/null | wc -l || echo "0")
+            echo "  ✅ coverage/htmlcov_quantamental/ exists ($QUANT_COUNT files)"
+            if [ "$QUANT_COUNT" -gt 0 ]; then
+              HTML_FOUND=true
+            fi
+          fi
+          if [ -d "coverage/htmlcov_api" ]; then
+            API_COUNT=$(find coverage/htmlcov_api -type f 2>/dev/null | wc -l || echo "0")
+            echo "  ✅ coverage/htmlcov_api/ exists ($API_COUNT files)"
+            if [ "$API_COUNT" -gt 0 ]; then
+              HTML_FOUND=true
+            fi
+          fi
+          
+          # If no HTML files found, generate from unified XML as fallback
+          if [ "$HTML_FOUND" = false ]; then
+            echo "⚠️  No HTML coverage files found. Generating from unified XML..."
+            if command -v coverage &> /dev/null || pip install coverage --quiet; then
+              if coverage html -d coverage/htmlcov --data-file coverage/coverage.xml 2>/dev/null; then
+                echo "✅ Generated HTML coverage from unified XML"
+                HTML_FOUND=true
+              else
+                echo "⚠️  Could not generate HTML coverage (coverage tool may not support this)"
+              fi
+            fi
+          fi
+          
+          # Commit if there are changes
+          if [ -n "$(git status --porcelain coverage/)" ]; then
+            # Fix permissions on HTML files before pulling (Docker creates them as root)
+            find coverage/ -type d -name "htmlcov*" -exec sudo chown -R runner:runner {} \; 2>/dev/null || true
+            find coverage/ -type d -name "htmlcov*" -exec chmod -R u+w {} \; 2>/dev/null || true
+            
+            # Ensure we're on the correct branch
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+            if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+              BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+              git checkout "$BRANCH_NAME" 2>/dev/null || true
+            fi
+            
+            # Pull latest changes (use merge instead of rebase to avoid permission issues)
+            git pull --no-edit --no-rebase || git pull --no-edit || echo "⚠️  WARNING: Could not pull latest changes"
+            
+            # Add coverage.xml first
+            if ! git add coverage/coverage.xml; then
+              echo "❌ ERROR: Failed to add coverage.xml to git"
+              exit 1
+            fi
+            echo "✅ Added coverage.xml"
+            
+            # Explicitly add HTML coverage directories if they exist
+            if [ -d "coverage/htmlcov" ]; then
+              if ! git add -f coverage/htmlcov/; then
+                echo "⚠️  WARNING: Failed to add coverage/htmlcov/ (may be ignored)"
+              else
+                echo "✅ Added coverage/htmlcov/"
+              fi
+            fi
+            
+            if [ -d "coverage/htmlcov_rag" ]; then
+              if ! git add -f coverage/htmlcov_rag/; then
+                echo "⚠️  WARNING: Failed to add coverage/htmlcov_rag/"
+              else
+                echo "✅ Added coverage/htmlcov_rag/"
+              fi
+            fi
+            
+            if [ -d "coverage/htmlcov_quantamental" ]; then
+              if ! git add -f coverage/htmlcov_quantamental/; then
+                echo "⚠️  WARNING: Failed to add coverage/htmlcov_quantamental/"
+              else
+                echo "✅ Added coverage/htmlcov_quantamental/"
+              fi
+            fi
+            
+            if [ -d "coverage/htmlcov_api" ]; then
+              if ! git add -f coverage/htmlcov_api/; then
+                echo "⚠️  WARNING: Failed to add coverage/htmlcov_api/"
+              else
+                echo "✅ Added coverage/htmlcov_api/"
+              fi
+            fi
+            
+            # Verify what's staged
+            echo "📋 Files staged for commit:"
+            git status --short coverage/ || true
+            
+            if ! git commit -m "Update unified coverage report [skip ci]"; then
+              echo "❌ ERROR: Failed to commit unified coverage report"
+              exit 1
+            fi
+            
+            # Push and verify success (retry once if it fails due to remote changes)
+            if ! git push; then
+              echo "⚠️  Push failed, pulling latest changes and retrying..."
+              
+              # Fix permissions on HTML files before pulling
+              find coverage/ -type d -name "htmlcov*" -exec sudo chown -R runner:runner {} \; 2>/dev/null || true
+              find coverage/ -type d -name "htmlcov*" -exec chmod -R u+w {} \; 2>/dev/null || true
+              
+              # Ensure we're on the correct branch
+              CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+              if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+                BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+                git checkout "$BRANCH_NAME" 2>/dev/null || true
+              fi
+              
+              # Use merge instead of rebase to avoid permission issues
+              git pull --no-edit --no-rebase || git pull --no-edit || true
+              
+              # Re-add files
+              git add -f coverage/coverage.xml || true
+              git add -f coverage/htmlcov/ 2>/dev/null || true
+              git add -f coverage/htmlcov_rag/ 2>/dev/null || true
+              git add -f coverage/htmlcov_quantamental/ 2>/dev/null || true
+              git add -f coverage/htmlcov_api/ 2>/dev/null || true
+              git commit -m "Update unified coverage report [skip ci]" || true
+              if ! git push; then
+                echo "❌ ERROR: Failed to push unified coverage report after retry"
+                exit 1
+              fi
+            fi
+            
+            echo "✅ Unified coverage report committed and pushed successfully"
+            
+            # Verify the commit was successful
+            if ! git log -1 --oneline | grep -q "Update unified coverage report"; then
+              echo "⚠️  WARNING: Commit message not found in git log, but commit appeared to succeed"
+            fi
+          else
+            echo "ℹ️ No coverage changes to commit (files may already be up to date)"
+          fi
+          
+          # Final verification: ensure unified file still exists after commit
+          if [ ! -f "coverage/coverage.xml" ]; then
+            echo "❌ ERROR: Unified coverage.xml disappeared after commit"
+            exit 1
+          fi
+
+      - name: Extract coverage from files
+        id: extract-coverage
+        if: always()
+        run: |
+          # Verify at least one coverage file exists
+          if [ ! -f "src/rag/coverage/coverage.xml" ] && [ ! -f "src/quantamental/coverage/coverage.xml" ] && [ ! -f "src/api-service/coverage/coverage.xml" ] && [ ! -f "coverage/coverage.xml" ]; then
+            echo "❌ ERROR: No coverage files found to extract from"
+            echo "  Checked: src/rag/coverage/coverage.xml"
+            echo "  Checked: src/quantamental/coverage/coverage.xml"
+            echo "  Checked: src/api-service/coverage/coverage.xml"
+            echo "  Checked: coverage/coverage.xml"
+            exit 1
+          fi
+          
+          # Write Python script to file to avoid YAML parsing issues
+          cat > /tmp/extract_coverage.py << 'SCRIPT_END'
+          import xml.etree.ElementTree as ET
+          import os
+          
+          RAG_COV = "N/A"
+          RAG_BRANCH = "N/A"
+          QUANT_COV = "N/A"
+          QUANT_BRANCH = "N/A"
+          API_COV = "N/A"
+          API_BRANCH = "N/A"
+          
+          # Try individual files first (if they exist from current run)
+          try:
+              if os.path.exists('src/rag/coverage/coverage.xml'):
+                  tree = ET.parse('src/rag/coverage/coverage.xml')
+                  root = tree.getroot()
+                  RAG_COV = f"{int(float(root.get('line-rate', 0)) * 100)}%"
+                  RAG_BRANCH = str(int(float(root.get('branch-rate', 0)) * 100))
+          except:
+              pass
+          
+          try:
+              if os.path.exists('src/quantamental/coverage/coverage.xml'):
+                  tree = ET.parse('src/quantamental/coverage/coverage.xml')
+                  root = tree.getroot()
+                  QUANT_COV = f"{int(float(root.get('line-rate', 0)) * 100)}%"
+                  QUANT_BRANCH = str(int(float(root.get('branch-rate', 0)) * 100))
+          except:
+              pass
+          
+          try:
+              if os.path.exists('src/api-service/coverage/coverage.xml'):
+                  tree = ET.parse('src/api-service/coverage/coverage.xml')
+                  root = tree.getroot()
+                  API_COV = f"{int(float(root.get('line-rate', 0)) * 100)}%"
+                  API_BRANCH = str(int(float(root.get('branch-rate', 0)) * 100))
+          except:
+              pass
+          
+          # If not found, extract from unified coverage.xml (now it exists after combine step)
+          if RAG_COV == "N/A" or QUANT_COV == "N/A" or API_COV == "N/A":
+              try:
+                  if os.path.exists('coverage/coverage.xml'):
+                      tree = ET.parse('coverage/coverage.xml')
+                      root = tree.getroot()
+                      packages = root.find('packages')
+                      
+                      if packages is not None:
+                          rag_rates = []
+                          quant_rates = []
+                          api_rates = []
+                          rag_branch_rates = []
+                          quant_branch_rates = []
+                          api_branch_rates = []
+                          
+                          for package in packages.findall('package'):
+                              name = package.get('name', '')
+                              line_rate = float(package.get('line-rate', '0'))
+                              branch_rate = float(package.get('branch-rate', '0'))
+                              
+                              if name.startswith('rag/'):
+                                  # Include all packages, even with 0% coverage
+                                  rag_rates.append(line_rate)
+                                  if branch_rate > 0:
+                                      rag_branch_rates.append(branch_rate)
+                              elif name.startswith('quantamental/'):
+                                  # Include all packages, even with 0% coverage
+                                  quant_rates.append(line_rate)
+                                  if branch_rate > 0:
+                                      quant_branch_rates.append(branch_rate)
+                              elif name.startswith('api-service/'):
+                                  # Include all packages, even with 0% coverage
+                                  api_rates.append(line_rate)
+                                  if branch_rate > 0:
+                                      api_branch_rates.append(branch_rate)
+                          
+                          # Calculate coverage from packages if we found any
+                          if rag_rates and RAG_COV == "N/A":
+                              RAG_COV = f"{int((sum(rag_rates) / len(rag_rates)) * 100)}%"
+                          if rag_branch_rates and RAG_BRANCH == "N/A":
+                              RAG_BRANCH = str(int((sum(rag_branch_rates) / len(rag_branch_rates)) * 100))
+                          
+                          if quant_rates and QUANT_COV == "N/A":
+                              QUANT_COV = f"{int((sum(quant_rates) / len(quant_rates)) * 100)}%"
+                          if quant_branch_rates and QUANT_BRANCH == "N/A":
+                              QUANT_BRANCH = str(int((sum(quant_branch_rates) / len(quant_branch_rates)) * 100))
+                          
+                          if api_rates and API_COV == "N/A":
+                              API_COV = f"{int((sum(api_rates) / len(api_rates)) * 100)}%"
+                          if api_branch_rates and API_BRANCH == "N/A":
+                              API_BRANCH = str(int((sum(api_branch_rates) / len(api_branch_rates)) * 100))
+              except Exception as e:
+                  # Log error for debugging
+                  import sys
+                  print(f"Error extracting from unified coverage: {e}", file=sys.stderr)
+                  pass
+          
+          print(f"rag_coverage={RAG_COV}")
+          print(f"rag_branch={RAG_BRANCH}")
+          print(f"quant_coverage={QUANT_COV}")
+          print(f"quant_branch={QUANT_BRANCH}")
+          print(f"api_coverage={API_COV}")
+          print(f"api_branch={API_BRANCH}")
+          SCRIPT_END
+          
+          # Execute Python script and read outputs
+          if ! python3 /tmp/extract_coverage.py | while IFS='=' read -r key value; do
+            echo "${key}=${value}" >> $GITHUB_OUTPUT
+          done; then
+            echo "❌ ERROR: Failed to execute coverage extraction script"
+            exit 1
+          fi
+          
+          # Verify outputs were set
+          if [ -z "$(grep '^rag_coverage=' $GITHUB_OUTPUT 2>/dev/null)" ] && [ -z "$(grep '^quant_coverage=' $GITHUB_OUTPUT 2>/dev/null)" ]; then
+            echo "❌ ERROR: No coverage data was extracted (both RAG and Quantamental are N/A)"
+            echo "This indicates a problem with coverage file generation or reading."
+            exit 1
+          fi
+          
+          echo "✅ Coverage extraction completed successfully"
+
+      - name: Calculate combined coverage from job outputs
+        id: combined-coverage
+        if: always()
+        run: |
+          # Calculate combined coverage from the tests job outputs
+          # Since matrix jobs don't expose outputs easily, we'll use the coverage files
+          # that should be in the workspace from the tests job (if they persist)
+          # OR calculate from the unified coverage.xml if it exists
+          
+          RAG_LINES_COV=0
+          RAG_LINES_TOT=0
+          QUANT_LINES_COV=0
+          QUANT_LINES_TOT=0
+          
+          # Try to read from individual coverage files (they may exist from previous runs or be committed)
+          if [ -f "src/rag/coverage/coverage.xml" ]; then
+            if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('src/rag/coverage/coverage.xml')" 2>/dev/null; then
+              echo "❌ ERROR: RAG coverage.xml is malformed or unreadable"
+              exit 1
+            fi
+            cat > /tmp/extract_rag_coverage.py << SCRIPT_END
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('src/rag/coverage/coverage.xml')
+          root = tree.getroot()
+          print(f"RAG_LINES_COV={int(root.get('lines-covered', 0))}")
+          print(f"RAG_LINES_TOT={int(root.get('lines-valid', 0))}")
+          SCRIPT_END
+            if ! eval $(python3 /tmp/extract_rag_coverage.py); then
+              echo "❌ ERROR: Failed to extract RAG coverage data"
+              exit 1
+            fi
+          fi
+          
+          if [ -f "src/quantamental/coverage/coverage.xml" ]; then
+            if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('src/quantamental/coverage/coverage.xml')" 2>/dev/null; then
+              echo "❌ ERROR: Quantamental coverage.xml is malformed or unreadable"
+              exit 1
+            fi
+            cat > /tmp/extract_quant_coverage.py << SCRIPT_END
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('src/quantamental/coverage/coverage.xml')
+          root = tree.getroot()
+          print(f"QUANT_LINES_COV={int(root.get('lines-covered', 0))}")
+          print(f"QUANT_LINES_TOT={int(root.get('lines-valid', 0))}")
+          SCRIPT_END
+            if ! eval $(python3 /tmp/extract_quant_coverage.py); then
+              echo "❌ ERROR: Failed to extract Quantamental coverage data"
+              exit 1
+            fi
+          fi
+          
+          # Extract API-service coverage if available
+          API_LINES_COV=0
+          API_LINES_TOT=0
+          if [ -f "src/api-service/coverage/coverage.xml" ]; then
+            if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('src/api-service/coverage/coverage.xml')" 2>/dev/null; then
+              echo "❌ ERROR: API-service coverage.xml is malformed or unreadable"
+              exit 1
+            fi
+            cat > /tmp/extract_api_coverage.py << SCRIPT_END
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('src/api-service/coverage/coverage.xml')
+          root = tree.getroot()
+          print(f"API_LINES_COV={int(root.get('lines-covered', 0))}")
+          print(f"API_LINES_TOT={int(root.get('lines-valid', 0))}")
+          SCRIPT_END
+            if ! eval $(python3 /tmp/extract_api_coverage.py); then
+              echo "❌ ERROR: Failed to extract API-service coverage data"
+              exit 1
+            fi
+          fi
+          
+          # If we have data from any component, calculate combined
+          if [ $RAG_LINES_TOT -gt 0 ] || [ $QUANT_LINES_TOT -gt 0 ] || [ $API_LINES_TOT -gt 0 ]; then
+            TOTAL_LINES_COV=$((RAG_LINES_COV + QUANT_LINES_COV + API_LINES_COV))
+            TOTAL_LINES_TOT=$((RAG_LINES_TOT + QUANT_LINES_TOT + API_LINES_TOT))
+            
+            if [ $TOTAL_LINES_TOT -gt 0 ]; then
+              COMBINED_COV_PCT=$(awk "BEGIN {printf \"%.2f\", ($TOTAL_LINES_COV / $TOTAL_LINES_TOT) * 100}")
+              COMBINED_COV=$(awk "BEGIN {printf \"%.0f\", ($TOTAL_LINES_COV / $TOTAL_LINES_TOT) * 100}")
+            else
+              COMBINED_COV_PCT=0.0
+              COMBINED_COV=0
+            fi
+          else
+            # Fallback: try unified coverage.xml
+            if [ -f "coverage/coverage.xml" ]; then
+              COMBINED_COV_PCT=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage/coverage.xml'); root = tree.getroot(); print(f\"{float(root.get('line-rate', 0)) * 100:.2f}\")" 2>/dev/null || echo "0.0")
+              COMBINED_COV=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage/coverage.xml'); root = tree.getroot(); print(f\"{int(float(root.get('line-rate', 0)) * 100)}\")" 2>/dev/null || echo "0")
+            else
+              COMBINED_COV_PCT=0.0
+              COMBINED_COV=0
+            fi
+          fi
+          
+          echo "unified_coverage=${COMBINED_COV}%" >> $GITHUB_OUTPUT
+          echo "unified_coverage_pct=${COMBINED_COV_PCT}" >> $GITHUB_OUTPUT
+          
+          # Extract branch coverage from unified file if available
+          if [ -f "coverage/coverage.xml" ]; then
+            UNIFIED_BRANCH=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage/coverage.xml'); root = tree.getroot(); print(f\"{int(float(root.get('branch-rate', 0)) * 100)}\")" 2>/dev/null || echo "0")
+            echo "unified_branch=${UNIFIED_BRANCH}" >> $GITHUB_OUTPUT
+          else
+            echo "unified_branch=0" >> $GITHUB_OUTPUT
+          fi
+          
+          # Verify outputs were set
+          if [ -z "${COMBINED_COV}" ] || [ -z "${COMBINED_COV_PCT}" ]; then
+            echo "❌ ERROR: Failed to calculate combined coverage"
+            exit 1
+          fi
+          
+          # Verify coverage percentage is a valid number
+          if ! echo "${COMBINED_COV_PCT}" | grep -qE '^[0-9]+\.?[0-9]*$'; then
+            echo "❌ ERROR: Invalid combined coverage percentage: ${COMBINED_COV_PCT}"
+            exit 1
+          fi
+          
+          echo "📊 Combined Coverage Calculation:"
+          echo "  RAG: ${RAG_LINES_COV}/${RAG_LINES_TOT} lines"
+          echo "  Quantamental: ${QUANT_LINES_COV}/${QUANT_LINES_TOT} lines"
+          echo "  API-service: ${API_LINES_COV}/${API_LINES_TOT} lines"
+          echo "  Combined: ${TOTAL_LINES_COV}/${TOTAL_LINES_TOT} = ${COMBINED_COV}%"
+          echo "✅ Combined coverage calculation completed successfully"
+
+      - name: Check combined coverage threshold
+        if: always() && steps.combined-coverage.outputs.unified_coverage_pct != '0.0'
+        run: |
+          COVERAGE_PCT=${{ steps.combined-coverage.outputs.unified_coverage_pct }}
+          THRESHOLD=50.0
+          
+          echo "📊 Combined Coverage Check"
+          echo "  Current: ${COVERAGE_PCT}%"
+          echo "  Required: ${THRESHOLD}%"
+          
+          # Use awk for floating point comparison (more reliable than bc)
+          if awk "BEGIN {exit !($COVERAGE_PCT >= $THRESHOLD)}"; then
+            echo "✅ PASS: Combined coverage ${COVERAGE_PCT}% meets ${THRESHOLD}% threshold"
+          else
+            echo "❌ FAIL: Combined coverage ${COVERAGE_PCT}% is below ${THRESHOLD}% threshold"
+            exit 1
+          fi
+
+      - name: Print summary
+        if: always()
+        run: |
+          echo "## 📊 Unified CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Unified Coverage Section
+          echo "### 📈 Combined Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Combined Coverage Summary
+          if [ "${{ steps.combined-coverage.outputs.unified_coverage }}" != "N/A" ] && [ -n "${{ steps.combined-coverage.outputs.unified_coverage }}" ]; then
+            COV_PCT=${{ steps.combined-coverage.outputs.unified_coverage_pct }}
+            THRESHOLD=50.0
+            if awk "BEGIN {exit !($COV_PCT >= $THRESHOLD)}"; then
+              echo "**Combined Coverage: ${{ steps.combined-coverage.outputs.unified_coverage }}** ✅ (meets 50% threshold)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Combined Coverage: ${{ steps.combined-coverage.outputs.unified_coverage }}** ❌ (below 50% threshold)" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Combined Coverage: N/A (coverage data not available)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Component Breakdown
+          echo "### Component Breakdown" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # RAG Section
+          echo "#### 🔍 RAG Component" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.extract-coverage.outputs.rag_coverage }}" != "N/A" ] && [ -n "${{ steps.extract-coverage.outputs.rag_coverage }}" ]; then
+            echo "- **Coverage: ${{ steps.extract-coverage.outputs.rag_coverage }}**" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.extract-coverage.outputs.rag_branch }}" != "N/A" ]; then
+              echo "- **Branch Coverage: ${{ steps.extract-coverage.outputs.rag_branch }}%**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- Coverage: N/A (no changes or tests skipped)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Quantamental Section
+          echo "#### 📊 Quantamental Component" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.extract-coverage.outputs.quant_coverage }}" != "N/A" ] && [ -n "${{ steps.extract-coverage.outputs.quant_coverage }}" ]; then
+            echo "- **Coverage: ${{ steps.extract-coverage.outputs.quant_coverage }}**" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.extract-coverage.outputs.quant_branch }}" != "N/A" ]; then
+              echo "- **Branch Coverage: ${{ steps.extract-coverage.outputs.quant_branch }}%**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- Coverage: N/A (no changes or tests skipped)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # API-service Section
+          echo "#### 🚀 API-service Component" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.extract-coverage.outputs.api_coverage }}" != "N/A" ] && [ -n "${{ steps.extract-coverage.outputs.api_coverage }}" ]; then
+            echo "- **Coverage: ${{ steps.extract-coverage.outputs.api_coverage }}**" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.extract-coverage.outputs.api_branch }}" != "N/A" ]; then
+              echo "- **Branch Coverage: ${{ steps.extract-coverage.outputs.api_branch }}%**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- Coverage: N/A (no changes or tests skipped)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall Status
+          echo "### Test Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.tests.result }}" = "success" ]; then
+            echo "🎉 **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.tests.result }}" = "skipped" ]; then
+            echo "⏭️ **Tests skipped (no changes detected)**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some tests failed.** Check individual test jobs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Coverage Report Location
+          echo "### 📁 Coverage Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Unified coverage report available at: \`coverage/coverage.xml\`" >> $GITHUB_STEP_SUMMARY
+          echo "HTML reports available in: \`coverage/htmlcov/\` (or component-specific subdirectories)" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Trigger CD Pipeline
+        if: needs.tests.result == 'success' && github.ref == 'refs/heads/Milestone5' && github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('🚀 Triggering CD Pipeline...');
+            const response = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'cd.yml',
+              ref: 'Milestone5',
+              inputs: {
+                skip_ci_check: 'false'
+              }
+            });
+            console.log('✅ CD Pipeline triggered successfully');
+            console.log('Response status:', response.status);

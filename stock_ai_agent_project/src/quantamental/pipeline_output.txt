@@ -1,0 +1,327 @@
+[0;93m2025-11-26 18:21:14.488743458 [W:onnxruntime:Default, device_discovery.cc:164 DiscoverDevicesForPlatform] GPU device discovery failed: device_discovery.cc:89 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+INFO:utils:✅ Config loaded from config.yaml
+INFO:utils:📅 Date range: 2022-11-27 → 2025-11-26
+INFO:__main__:STARTING QUANTAMENTAL PIPELINE
+INFO:__main__:==================================================
+INFO:utils:✅ Config loaded from config.yaml
+INFO:utils:📅 Date range: 2022-11-27 → 2025-11-26
+INFO:__main__:==================================================
+INFO:__main__:STEP 1: DATA COLLECTION
+INFO:__main__:==================================================
+INFO:data_collect:📊 FMP Data Collector initialized
+INFO:data_collect:   Date range: 2022-11-27 → 2025-11-26
+INFO:data_collect:🚀 Starting data collection...
+INFO:data_collect:💾 Using cached S&P 500 tickers
+INFO:data_collect:💾 Using cached OHLCV data
+INFO:data_collect:💾 Using cached fundamentals
+INFO:data_collect:💾 Using cached S&P 500 index
+INFO:data_collect:💾 Using cached company profiles
+INFO:data_collect:✅ Data collection complete!
+INFO:__main__:==================================================
+INFO:__main__:STEP 2: DATA PROCESSING
+INFO:__main__:==================================================
+INFO:data_process:🚀 Starting data processing pipeline...
+INFO:data_process:💾 Using cached technicals
+INFO:data_process:🔗 Merging OHLCV with fundamentals...
+Merging:   0%|          | 0/437 [00:00<?, ?it/s]Merging:   2%|▏         | 10/437 [00:00<00:04, 95.48it/s]Merging:   5%|▍         | 21/437 [00:00<00:04, 99.88it/s]Merging:   7%|▋         | 32/437 [00:00<00:04, 100.56it/s]Merging:  10%|▉         | 43/437 [00:00<00:03, 102.41it/s]Merging:  12%|█▏        | 54/437 [00:00<00:03, 102.96it/s]Merging:  15%|█▍        | 65/437 [00:00<00:03, 102.57it/s]Merging:  17%|█▋        | 76/437 [00:00<00:03, 103.12it/s]Merging:  20%|█▉        | 87/437 [00:00<00:03, 103.62it/s]Merging:  22%|██▏       | 98/437 [00:00<00:03, 102.20it/s]Merging:  25%|██▍       | 109/437 [00:01<00:03, 102.58it/s]Merging:  27%|██▋       | 120/437 [00:01<00:03, 102.87it/s]Merging:  30%|██▉       | 131/437 [00:01<00:02, 103.63it/s]Merging:  32%|███▏      | 142/437 [00:01<00:02, 104.10it/s]Merging:  35%|███▌      | 153/437 [00:01<00:02, 103.91it/s]Merging:  38%|███▊      | 164/437 [00:01<00:02, 103.62it/s]Merging:  40%|████      | 175/437 [00:01<00:02, 105.03it/s]Merging:  43%|████▎     | 186/437 [00:01<00:02, 105.36it/s]Merging:  45%|████▌     | 197/437 [00:01<00:02, 104.72it/s]Merging:  48%|████▊     | 208/437 [00:02<00:02, 104.28it/s]Merging:  50%|█████     | 219/437 [00:02<00:02, 103.71it/s]Merging:  53%|█████▎    | 230/437 [00:02<00:02, 70.74it/s] Merging:  55%|█████▌    | 241/437 [00:02<00:02, 77.97it/s]Merging:  58%|█████▊    | 252/437 [00:02<00:02, 84.47it/s]Merging:  60%|██████    | 263/437 [00:02<00:01, 90.04it/s]Merging:  63%|██████▎   | 274/437 [00:02<00:01, 93.44it/s]Merging:  65%|██████▌   | 285/437 [00:02<00:01, 96.32it/s]Merging:  68%|██████▊   | 296/437 [00:03<00:01, 98.04it/s]Merging:  70%|███████   | 307/437 [00:03<00:01, 99.98it/s]Merging:  73%|███████▎  | 318/437 [00:03<00:01, 100.89it/s]Merging:  75%|███████▌  | 329/437 [00:03<00:01, 102.15it/s]Merging:  78%|███████▊  | 340/437 [00:03<00:00, 102.30it/s]Merging:  80%|████████  | 351/437 [00:03<00:00, 102.21it/s]Merging:  83%|████████▎ | 362/437 [00:03<00:00, 102.83it/s]Merging:  85%|████████▌ | 373/437 [00:03<00:00, 103.70it/s]Merging:  88%|████████▊ | 384/437 [00:03<00:00, 103.54it/s]Merging:  90%|█████████ | 395/437 [00:03<00:00, 103.28it/s]Merging:  93%|█████████▎| 406/437 [00:04<00:00, 103.52it/s]Merging:  95%|█████████▌| 417/437 [00:04<00:00, 102.90it/s]Merging:  98%|█████████▊| 428/437 [00:04<00:00, 103.00it/s]Merging: 100%|██████████| 437/437 [00:04<00:00, 99.52it/s] 
+INFO:data_process:✅ Merged data: 326,584 rows, 437 symbols
+INFO:data_process:🧹 Cleaning data...
+INFO:data_process:✅ Cleaned: 326,584 rows (0 removed), 437 symbols (0 removed)
+INFO:data_process:💾 Saved → quantamental_cleaned.parquet
+INFO:data_process:✅ Validating data coverage...
+INFO:data_process:   Saved coverage plot → /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/data/coverage_distribution.png
+INFO:data_process:   Filtering 6 low-coverage symbols
+INFO:data_process:✅ Final dataset: 431 symbols, 324,526 rows
+INFO:data_process:💾 Saved → quantamental_filtered.parquet & .csv
+/mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/data_process.py:299: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+  validated["sp500_return_1m"] = validated["sp500_close"].pct_change(21)
+INFO:data_process:📅 Creating monthly snapshots...
+INFO:data_process:✅ Monthly snapshots: 15,946 rows
+INFO:data_process:💾 Saved → quantamental_monthly.parquet
+INFO:data_process:✅ Data processing pipeline complete!
+INFO:__main__:==================================================
+INFO:__main__:STEP 3: MODEL TRAINING
+INFO:__main__:==================================================
+INFO:model_train: Quantamental Trainer initialized
+INFO:model_train:   Features: 30 total
+wandb: Currently logged in as: sip228 (sip228-harvard-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run 4b0rdv60
+wandb: Tracking run with wandb version 0.23.0
+wandb: Run data is saved locally in /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/wandb/run-20251126_182149-4b0rdv60
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run neat-dew-33
+wandb: ⭐️ View project at https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: 🚀 View run at https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/4b0rdv60
+wandb: Detected [google.genai, vertexai] in use.
+wandb: Use W&B Weave for improved LLM call tracing. Install Weave with `pip install weave` then add `import weave` to the top of your script.
+wandb: For more information, check out the docs at: https://weave-docs.wandb.ai/
+INFO:model_train: W&B Run: neat-dew-33 (4b0rdv60)
+INFO:model_train: Preparing features...
+INFO:model_train: Features prepared
+INFO:model_train:   Label distribution: {0: 0.5784937682312384, 1: 0.4215062317687616}
+INFO:model_train: Train/Test Split:
+INFO:model_train:   Train: 2024-10-01 → 2025-09-30 (5,172 rows)
+INFO:model_train:   Test: 2025-10 (431 rows)
+INFO:model_train:Training data logged to W&B as artifact (version will auto-increment)
+INFO:model_train: Training Random Forest...
+INFO:model_train: Model trained with 400 trees
+INFO:model_train: Optimal threshold: 0.4886 (F1: 0.8016)
+INFO:model_train: Test Metrics:
+INFO:model_train:   accuracy: 0.4362
+INFO:model_train:   precision: 0.4460
+INFO:model_train:   recall: 0.2719
+INFO:model_train:   f1_score: 0.3379
+INFO:model_train:   roc_auc: 0.4029
+INFO:model_train: Artifacts saved to /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/data/models/4b0rdv60
+INFO:model_train: Model logged to W&B as artifact
+wandb: updating run metadata
+wandb: uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:             accuracy ▁
+wandb:             f1_score ▁
+wandb:            precision ▁
+wandb:               recall ▁
+wandb:              roc_auc ▁
+wandb:  test_positive_ratio ▁
+wandb:         test_samples ▁
+wandb: train_positive_ratio ▁
+wandb:        train_samples ▁
+wandb: 
+wandb: Run summary:
+wandb:             accuracy 0.43619
+wandb:             f1_score 0.33787
+wandb:            precision 0.44604
+wandb:               recall 0.27193
+wandb:              roc_auc 0.4029
+wandb:  test_positive_ratio 0.529
+wandb:         test_samples 431
+wandb: train_positive_ratio 0.44084
+wandb:        train_samples 5172
+wandb: 
+wandb: 🚀 View run neat-dew-33 at: https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/4b0rdv60
+wandb: ⭐️ View project at: https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: Synced 5 W&B file(s), 4 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20251126_182149-4b0rdv60/logs
+INFO:model_train: Training complete with W&B logging!
+INFO:__main__:Model validation: Warning: 43.6% (need 80%)
+WARNING:__main__:Model degraded - predictions may be unreliable
+INFO:__main__:==================================================
+INFO:__main__:STEP 4: PREDICTION
+INFO:__main__:==================================================
+INFO:model_validation:Searching W&B project: Quantamental-model
+WARNING:model_validation:v4: no metadata, using fallback 39%
+WARNING:model_validation:v3: no metadata, using fallback 39%
+WARNING:model_validation:v2: no metadata, using fallback 39%
+WARNING:model_validation:v1: no metadata, using fallback 39%
+WARNING:model_validation:v0: no metadata, using fallback 39%
+INFO:model_validation:Found 5 models, best: v4 (39.0%)
+WARNING:model_validation:Degraded model: 39.0% (need 80% for prod)
+wandb: \ 1 of 3 files downloaded...wandb:   3 of 3 files downloaded.  
+INFO:__main__:Using validated model: degraded (39.0%)
+INFO:model_predict:🔮 Quantamental Predictor initialized
+INFO:model_predict:🚀 Starting prediction pipeline...
+INFO:model_predict:📥 Loading model from W&B: quantamental-model:latest
+wandb: \ 1 of 3 files downloaded...wandb:   3 of 3 files downloaded.  
+INFO:model_predict:✅ Model loaded from /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/artifacts/quantamental-model:v4
+INFO:model_predict:🔧 Preparing prediction data...
+INFO:model_predict:✅ Prediction data prepared for 2025-11
+INFO:model_predict:   431 stocks with complete features
+INFO:model_predict:🎯 Generating predictions...
+INFO:model_predict:✅ Predictions generated
+INFO:model_predict:   Mean probability: 0.4719
+INFO:model_predict:   Std probability: 0.0713
+INFO:model_predict:📊 Top 10 predicted outperformers:
+INFO:model_predict:   F: 0.6588
+INFO:model_predict:   GM: 0.6467
+INFO:model_predict:   WDC: 0.6432
+INFO:model_predict:   FSLR: 0.6428
+INFO:model_predict:   MS: 0.6401
+INFO:model_predict:   AES: 0.6399
+INFO:model_predict:   AXP: 0.6320
+INFO:model_predict:   COR: 0.6276
+INFO:model_predict:   HCA: 0.6247
+INFO:model_predict:   ON: 0.6186
+INFO:model_predict:✅ Prediction pipeline complete!
+INFO:__main__:==================================================
+INFO:__main__:STEP 5: BACKTEST & GCS UPLOAD
+INFO:__main__:==================================================
+INFO:utils:✅ GCS Handler initialized for bucket: fin-data-bucket-115
+INFO:backtest: Quantamental Backtester initialized
+INFO:backtest:   GCS Bucket: fin-data-bucket-115
+INFO:backtest:   Output Folder: model_output
+INFO:backtest:============================================================
+INFO:backtest: RUNNING BACKTEST PIPELINE
+INFO:backtest:============================================================
+INFO:backtest: Generating predictions...
+INFO:model_predict:🔮 Quantamental Predictor initialized
+INFO:model_predict:🚀 Starting prediction pipeline...
+INFO:model_predict:📥 Loading model from W&B: quantamental-model:latest
+wandb: \ 1 of 3 files downloaded...wandb:   3 of 3 files downloaded.  
+INFO:model_predict:✅ Model loaded from /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/artifacts/quantamental-model:v4
+INFO:model_predict:🔧 Preparing prediction data...
+INFO:model_predict:✅ Prediction data prepared for 2025-11
+INFO:model_predict:   431 stocks with complete features
+INFO:model_predict:🎯 Generating predictions...
+INFO:model_predict:✅ Predictions generated
+INFO:model_predict:   Mean probability: 0.4719
+INFO:model_predict:   Std probability: 0.0713
+INFO:model_predict:📊 Top 10 predicted outperformers:
+INFO:model_predict:   F: 0.6588
+INFO:model_predict:   GM: 0.6467
+INFO:model_predict:   WDC: 0.6432
+INFO:model_predict:   FSLR: 0.6428
+INFO:model_predict:   MS: 0.6401
+INFO:model_predict:   AES: 0.6399
+INFO:model_predict:   AXP: 0.6320
+INFO:model_predict:   COR: 0.6276
+INFO:model_predict:   HCA: 0.6247
+INFO:model_predict:   ON: 0.6186
+INFO:model_predict:✅ Prediction pipeline complete!
+INFO:backtest:   Prediction data: 431 rows
+INFO:backtest: Creating agent output files with hybrid scoring...
+INFO:backtest:    Input: 431 rows × 89 columns
+INFO:backtest:    Calculating Hybrid Quantamental Scores...
+INFO:hybrid_scoring: Calculating Hybrid Quantamental Scores...
+INFO:hybrid_scoring:   Technical indicators: 8
+INFO:hybrid_scoring:   Fundamental metrics: 22
+INFO:hybrid_scoring:    Created 30 rank columns
+INFO:hybrid_scoring:    Technical_Score: 0.501 avg
+INFO:hybrid_scoring:    Fundamental_Score: 0.500 avg
+INFO:hybrid_scoring:    Hybrid_Score: 0.501 avg
+INFO:hybrid_scoring:   Recommendations generated
+INFO:hybrid_scoring:      130 Buy signals
+INFO:hybrid_scoring:      172 Hold
+INFO:hybrid_scoring:      129 Avoid
+INFO:hybrid_scoring: Hybrid scoring complete!
+INFO:backtest:    Hybrid scores calculated
+INFO:backtest:   🔧 Calculating fwd_return_1m for backtest metrics...
+INFO:backtest:    Added 'fwd_return_1m' and 'fwd_sp500_return_1m'
+INFO:backtest:    0 rows have forward returns for backtest
+INFO:backtest:    Calculating backtest metrics...
+INFO:hybrid_scoring: Calculating backtest metrics per symbol...
+WARNING:hybrid_scoring:     No valid forward returns - adding NaN columns
+WARNING:hybrid_scoring:    This is normal for latest month predictions (no future data yet)
+INFO:backtest:    Backtest metrics calculated
+INFO:backtest:    Renamed 'pred_prob' → 'pred_prob_next_month'
+INFO:backtest:    Generated 'signal' column
+INFO:backtest:    Added empty 'equity_chart_path'
+INFO:backtest:    Adding sector/industry from company profiles...
+INFO:backtest:    Added 'sector' from company profiles
+INFO:backtest:    Added 'industry' from company profiles
+INFO:backtest:    Output: 431 rows × 40 columns
+INFO:backtest:    Selected 40/40 required columns
+INFO:backtest:    Created: ./data/combined_quantamental_hybrid_with_factors_and_backtest.csv
+INFO:backtest:      Rows: 431
+INFO:backtest:      Columns: 40  CORRECT!
+INFO:backtest:    SUCCESS: Output has exactly 40 columns as required!
+INFO:backtest:    First 10 columns: ['symbol', 'pred_prob_next_month', 'signal', 'Hybrid_Score', 'Fundamental_Score', 'Technical_Score', 'Hybrid_Rank', 'Hybrid_CS_Pct', 'H_Score Recommendation', 'date']
+INFO:backtest:    Loaded cached company profiles (372 companies)
+INFO:backtest:    Created: ./data/all_equity_curves.csv
+INFO:backtest:      Equity curves for 100 stocks
+INFO:backtest:============================================================
+INFO:backtest: Agent Output Files Summary:
+INFO:backtest:   1. Combined CSV: 431 rows × 40 columns
+INFO:backtest:      Target: 40 columns
+INFO:backtest:      Status:  PERFECT MATCH!
+INFO:backtest:   2. Company Profiles: 372 companies
+INFO:backtest:   3. Equity Curves: 100 data points
+INFO:backtest:
+    Column breakdown:
+INFO:backtest:      Core (3): symbol, pred_prob_next_month, signal
+INFO:backtest:      Hybrid Scores (6): Hybrid_Score, Fundamental_Score, Technical_Score, etc.
+INFO:backtest:      Fundamentals (11): roe, roic, peRatio, etc.
+INFO:backtest:      Technicals (8): return_1m, RSI_14, MACD, etc.
+INFO:backtest:      Backtest (9): sharpe_1m_annual, cagr, hit_rates, etc.
+INFO:backtest:      Other (3): date, sector, industry
+INFO:backtest:============================================================
+INFO:backtest:
+ Uploading to GCS...
+INFO:utils:✅ Uploaded ./data/combined_quantamental_hybrid_with_factors_and_backtest.csv → gs://fin-data-bucket-115/model_output/combined_20251126_182206.csv
+INFO:backtest:    combined: gs://fin-data-bucket-115/model_output/combined_20251126_182206.csv
+INFO:utils:✅ Uploaded ./data/company_profiles.csv → gs://fin-data-bucket-115/model_output/profiles_20251126_182206.csv
+INFO:backtest:    profiles: gs://fin-data-bucket-115/model_output/profiles_20251126_182206.csv
+INFO:utils:✅ Uploaded ./data/all_equity_curves.csv → gs://fin-data-bucket-115/model_output/equity_20251126_182207.csv
+INFO:backtest:    equity: gs://fin-data-bucket-115/model_output/equity_20251126_182207.csv
+INFO:backtest:
+ Logging to W&B...
+wandb: setting up run dnoin9nw
+wandb: Tracking run with wandb version 0.23.0
+wandb: Run data is saved locally in /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/wandb/run-20251126_182207-dnoin9nw
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run backtest_20251126_182207
+wandb: ⭐️ View project at https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: 🚀 View run at https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/dnoin9nw
+wandb: updating run metadata; uploading artifact backtest_output
+wandb: uploading summary
+wandb: 
+wandb: Run summary:
+wandb: avg_hybrid_score 0.50065
+wandb: 
+wandb: 🚀 View run backtest_20251126_182207 at: https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/dnoin9nw
+wandb: ⭐️ View project at: https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20251126_182207-dnoin9nw/logs
+INFO:backtest:    W&B logging complete
+INFO:backtest:
+============================================================
+INFO:backtest: BACKTEST COMPLETE!
+INFO:backtest:   Stocks analyzed: 431
+INFO:backtest:   Local files: 3
+INFO:backtest:   GCS uploads: 3
+INFO:backtest:============================================================
+INFO:__main__:==================================================
+INFO:__main__:STEP 7: DATA VERSIONING
+INFO:__main__:==================================================
+WARNING:data_versioning:  GCS versioning disabled: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.
+INFO:data_versioning: Data Version Manager initialized
+INFO:data_versioning:============================================================
+INFO:data_versioning:📦 CREATING DATA VERSION SNAPSHOT: ms4
+INFO:data_versioning:============================================================
+INFO:data_versioning:
+📥 VERSIONING INPUT FILES:
+wandb: Tracking run with wandb version 0.23.0
+wandb: Run data is saved locally in /mnt/c/Users/siris/OneDrive/CSCI-E_115_od/Project/git/MS4/AC215_StockBusters/src/quantamental/wandb/run-20251126_182221-luiybwno
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run data_version_ms4
+wandb: ⭐️ View project at https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: 🚀 View run at https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/luiybwno
+INFO:data_versioning:   ✅ ohlcv_raw: 375,807 rows, 7.11 MB → vv1
+INFO:data_versioning:   ✅ sp500_index: 752 rows, 0.04 MB → vv1
+INFO:data_versioning:   ✅ fundamentals: 5,227 rows, 2.53 MB → vv1
+INFO:data_versioning:
+📤 VERSIONING OUTPUT FILES:
+INFO:data_versioning:   ✅ combined_quantamental: 431 rows, 40 cols → vv2
+INFO:data_versioning:   ✅ company_profiles: 372 rows, 36 cols → vv1
+INFO:data_versioning:   ✅ equity_curves: 100 rows, 4 cols → vv1
+wandb: updating run metadata
+wandb: uploading summary, console lines 0-7
+wandb: 
+wandb: Run summary:
+wandb:  num_input_files 3
+wandb: num_output_files 3
+wandb:  total_artifacts 6
+wandb:      version_tag ms4
+wandb: 
+wandb: 🚀 View run data_version_ms4 at: https://wandb.ai/sip228-harvard-university/Quantamental-model/runs/luiybwno
+wandb: ⭐️ View project at: https://wandb.ai/sip228-harvard-university/Quantamental-model
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20251126_182221-luiybwno/logs
+INFO:data_versioning:
+💾 SAVING LOCAL SNAPSHOT:
+INFO:data_versioning:   ✅ Version info saved to: ./data/version_info_ms4.json
+INFO:data_versioning:
+============================================================
+INFO:data_versioning:✅ VERSION SNAPSHOT COMPLETE!
+INFO:data_versioning:   Version tag: ms4
+INFO:data_versioning:   Input files versioned: 3
+INFO:data_versioning:   Output files versioned: 3
+INFO:data_versioning:   Total W&B artifacts: 6
+INFO:data_versioning:   Methods used: wandb_artifacts, local_snapshot
+INFO:data_versioning:   Info saved to: ./data/version_info_ms4.json
+INFO:data_versioning:============================================================
+INFO:__main__:Data versioned: wandb_artifacts, local_snapshot
+INFO:__main__:==================================================
+INFO:__main__:PIPELINE COMPLETE
+INFO:__main__:==================================================
+INFO:__main__:Done!

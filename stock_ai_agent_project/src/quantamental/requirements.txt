@@ -1,0 +1,62 @@
+# Core dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Financial data
+aiohttp>=3.9.0
+python-dateutil>=2.8.0
+tqdm>=4.66.0
+
+# ML tracking and logging
+wandb>=0.16.0
+
+# Date handling
+python-dateutil>=2.8.0
+
+# Data Collection
+aiohttp>=3.8.0
+requests>=2.28.0
+
+# Visualization
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Cloud storage
+google-cloud-storage>=2.10.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# Plotting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Async support
+nest-asyncio>=1.5.0
+
+# Testing
+pytest>=7.2.0
+pytest-cov>=4.0.0
+pytest-asyncio>=0.21.0
+
+# Code Quality
+flake8>=6.0.0
+black>=23.0.0
+isort>=5.12.0
+
+# RAG/LLM dependencies (for reasoning pipeline)
+google-auth>=2.23.0
+langchain-google-vertexai>=1.0.0
+langchain-community>=0.0.20
+langchain-core>=0.1.0
+python-dotenv>=1.0.0
+chromadb>=0.4.0
+fastembed>=0.2.0
+
+# misc
+ipython>=8.12.0
+jupyter>=1.0.0

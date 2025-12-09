@@ -1,0 +1,5 @@
+encryptionsalt: v1:yDp1J1MVQQ8=:v1:wk62L+HeWHNnKAUP:3AFoEJ+O4KglTFZRUQaeDtKgHLjeKQ==
+config:
+  gcp:project: lateral-spirit-473422-e1
+  security:ssh_user: sa_109826135182797801645
+  security:gcp_service_account_email: deployment@lateral-spirit-473422-e1.iam.gserviceaccount.com

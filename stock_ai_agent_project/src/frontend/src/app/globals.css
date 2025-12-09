@@ -1,0 +1,290 @@
+/* Modern Minimalist Design System */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        height: 100%;
+    }
+
+    body {
+        @apply antialiased;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-semibold tracking-tight;
+    }
+
+    /* Modern Design Tokens - Light Mode */
+    :root {
+        /* Neutral palette - crisp and clean */
+        --background: 0 0% 100%;
+        --foreground: 222 47% 11%;
+
+        /* Card system */
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+
+        /* Muted backgrounds */
+        --muted: 210 40% 96%;
+        --muted-foreground: 215 16% 47%;
+
+        /* Borders - subtle but visible */
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+
+        /* Primary accent - modern purple */
+        --primary: 262 83% 58%;
+        --primary-foreground: 0 0% 100%;
+
+        /* Secondary - neutral */
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222 47% 11%;
+
+        /* Accent - subtle highlight */
+        --accent: 210 40% 96%;
+        --accent-foreground: 222 47% 11%;
+
+        /* Destructive */
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 98%;
+
+        /* Focus ring */
+        --ring: 262 83% 58%;
+
+        /* Popover */
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+
+        /* Chart colors */
+        --chart-1: 262 83% 58%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+
+        /* Border radius - crisp edges */
+        --radius: 0.5rem;
+    }
+
+    /* Dark Mode - Modern and sophisticated */
+    .dark {
+        --background: 222 47% 11%;
+        --foreground: 210 40% 98%;
+
+        --card: 222 47% 11%;
+        --card-foreground: 210 40% 98%;
+
+        --muted: 217 33% 17%;
+        --muted-foreground: 215 20% 65%;
+
+        --border: 217 33% 17%;
+        --input: 217 33% 17%;
+
+        --primary: 263 70% 65%;
+        --primary-foreground: 0 0% 100%;
+
+        --secondary: 217 33% 17%;
+        --secondary-foreground: 210 40% 98%;
+
+        --accent: 217 33% 17%;
+        --accent-foreground: 210 40% 98%;
+
+        --destructive: 0 63% 31%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: 263 70% 65%;
+
+        --popover: 222 47% 11%;
+        --popover-foreground: 210 40% 98%;
+
+        --chart-1: 263 70% 65%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer components {
+    /* Header - Clean and minimal */
+    .header-wrapper {
+        @apply fixed w-full top-0 z-50 border-b bg-background/80 backdrop-blur-md;
+    }
+
+    .header-container {
+        @apply bg-background;
+    }
+
+    .header-content {
+        @apply container mx-auto px-4 h-16 flex items-center justify-between;
+    }
+
+    .header-logo {
+        @apply text-foreground hover:text-primary transition-colors flex items-center gap-2;
+    }
+
+    .nav-desktop {
+        @apply hidden md:flex items-center gap-1;
+    }
+
+    .nav-link {
+        @apply flex items-center gap-2 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all;
+    }
+
+    .nav-link-active {
+        @apply bg-accent text-foreground font-medium;
+    }
+
+    .nav-icon-wrapper {
+        @apply flex items-center justify-center;
+    }
+
+    .nav-text {
+        @apply text-sm;
+    }
+
+    /* Mobile Menu */
+    .mobile-menu-button {
+        @apply md:hidden p-2 hover:bg-accent rounded-md transition-colors;
+    }
+
+    .mobile-menu {
+        @apply absolute top-16 left-0 right-0 bg-background md:hidden border-b transform transition-transform duration-300 ease-in-out;
+    }
+
+    .mobile-menu-overlay {
+        @apply fixed inset-0 bg-black/20 md:hidden z-40;
+    }
+
+    /* Page Sections */
+    .content-section {
+        @apply container mx-auto px-4 py-8;
+    }
+
+    /* Cards - Crisp borders, subtle shadows */
+    .feature-card {
+        @apply bg-card border rounded-lg p-6 hover:border-primary/50 transition-all;
+    }
+
+    .feature-card-title {
+        @apply text-xl font-semibold mb-2;
+    }
+
+    .feature-card-description {
+        @apply text-muted-foreground text-sm;
+    }
+
+    /* Buttons - Modern and clean */
+    .button-primary {
+        @apply px-6 py-2.5 bg-primary text-primary-foreground rounded-md font-medium shadow-sm hover:bg-primary/90 transition-all;
+    }
+
+    .button-secondary {
+        @apply px-6 py-2.5 bg-secondary text-secondary-foreground rounded-md font-medium border hover:bg-accent transition-all;
+    }
+
+    /* Footer - Minimal */
+    .footer {
+        @apply w-full border-t py-6 mt-auto bg-background;
+    }
+
+    .footer-text {
+        @apply text-center text-muted-foreground text-sm;
+    }
+
+    /* Chat Layout - Clean and organized */
+    .chat-container {
+        @apply flex flex-col h-screen overflow-hidden;
+    }
+
+    .chat-main {
+        @apply flex-1 flex overflow-hidden;
+    }
+
+    .chat-sidebar {
+        @apply w-80 border-r flex flex-col bg-background;
+    }
+
+    .chat-messages {
+        @apply flex-1 flex flex-col overflow-hidden bg-muted/30;
+    }
+
+    .chat-messages-header {
+        @apply bg-card border-b px-6 py-4 flex items-center gap-3;
+    }
+
+    .chat-message {
+        @apply flex items-start gap-3 max-w-3xl;
+    }
+
+    .chat-message-user {
+        @apply ml-auto flex-row-reverse;
+    }
+
+    .chat-message-assistant {
+        @apply mr-auto;
+    }
+
+    /* Chat Input Area */
+    .chat-input-area {
+        @apply border-t bg-background px-6 py-4;
+    }
+}
+
+@layer utilities {
+    .gradient-text {
+        @apply text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60;
+    }
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+}
+
+/* Fix for custom marker icons */
+.custom-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Dark mode adjustments for Leaflet */
+.dark .leaflet-container {
+    background: hsl(var(--background));
+}
+
+.dark .leaflet-popup-content-wrapper {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+}
+
+.dark .leaflet-popup-tip {
+    background: hsl(var(--card));
+}
+
+/* Ensure map controls are visible in dark mode */
+.dark .leaflet-control-zoom a {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+}
+
+.dark .leaflet-control-zoom a:hover {
+    background: hsl(var(--accent));
+}

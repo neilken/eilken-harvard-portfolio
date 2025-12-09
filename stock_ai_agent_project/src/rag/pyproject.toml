@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "ac215-rag"
 version = "0.1.0"
 requires-python = ">=3.11"
@@ -26,9 +26,64 @@ dependencies = [
   
   # GCS storage (optional, for persistent vector storage)
   "google-cloud-storage>=2.10.0",
+  
+  # Data versioning
+  "dvc[gs]>=3.0.0",  # DVC with GCS support
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0.0",
+  "pytest-cov>=4.0.0",
+  "pytest-asyncio>=0.21.0",
+  "pytest-xdist>=3.0.0",  # For parallel test execution
+  "black>=23.0.0",
+  "flake8>=6.0.0",
+  "httpx>=0.24.0",  # For FastAPI TestClient
+  "pydantic>=2.0.0",  # For FastAPI BaseModel
+  "requests>=2.31.0",  # For system tests
+  "pre-commit>=3.6.0",  # For pre-commit hooks
+]
 
+[tool.black]
+line-length = 120
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | __pycache__
+)/
+'''
 
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503", "E501", "E722", "W504"]
+exclude = [
+    ".eggs",
+    ".eggs/*",
+    "*.egg",
+    "*.egg-info",
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+]
+per-file-ignores = [
+    "__init__.py:F401",
+]
 
 
