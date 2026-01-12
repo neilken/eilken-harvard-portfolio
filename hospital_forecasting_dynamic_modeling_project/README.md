@@ -7,7 +7,7 @@ A comparative analysis of time series forecasting models for predicting weekly h
 
 **Course:** CSCI E-116 Dynamic Modeling and Forecasting in Big Data  
 **Institution:** Harvard University Extension School  
-**Date:** December 2024
+**Date:** December 2025
 
 ---
 
@@ -66,37 +66,37 @@ The notebooks should be run **in order**. Each notebook builds on the outputs of
 │                           DATA PREPARATION                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌──────────────────────┐    ┌──────────────────────┐                       │
+│  ┌──────────────────────┐     ┌───────────────────────┐                     │
 │  │ 01a_data_extraction  │───▶│ 01b_data_preprocessing│                     │
-│  │                      │    │                      │                       │
-│  │ • Load HHS COVID-19  │    │ • Weekly aggregation │                       │
-│  │   hospital data      │    │ • Create KPIs        │                       │
-│  │ • Fetch CDC flu data │    │ • Merge external data│                       │
-│  │ • Fetch NOAA weather │    │ • Quality validation │                       │
-│  └──────────────────────┘    └──────────────────────┘                       │
+│  │                      │     │                       │                     │
+│  │ • Load HHS COVID-19  │     │ • Weekly aggregation  │                     │
+│  │   hospital data      │     │ • Create KPIs         │                     │
+│  │ • Fetch CDC flu data │     │ • Merge external data │                     │
+│  │ • Fetch NOAA weather │     │ • Quality validation  │                     │
+│  └──────────────────────┘     └───────────────────────┘                     │
 │                                       │                                     │
 │                                       ▼                                     │
-│                         ┌──────────────────────┐                            │
-│                         │      02_eda          │                            │
-│                         │                      │                            │
-│                         │ • Descriptive stats  │                            │
-│                         │ • Trend/seasonality  │                            │
-│                         │ • Stationarity tests │                            │
+│                         ┌───────────────────────┐                           │
+│                         │      02_eda           │                           │
+│                         │                       │                           │
+│                         │ • Descriptive stats   │                           │
+│                         │ • Trend/seasonality   │                           │
+│                         │ • Stationarity tests  │                           │
 │                         │ • Correlation analysis│                           │
-│                         │ • Granger causality  │                            │
-│                         └──────────────────────┘                            │
+│                         │ • Granger causality   │                           │
+│                         └───────────────────────┘                           │
 │                                       │                                     │
 │                                       ▼                                     │
-│                     ┌──────────────────────────┐                            │
-│                     │  03_feature_engineering  │                            │
-│                     │                          │                            │
+│                     ┌───────────────────────────┐                           │
+│                     │  03_feature_engineering   │                           │
+│                     │                           │                           │
 │                     │ • Train/test split (80/20)│                           │
-│                     │ • Temporal features      │                            │
-│                     │ • Lag features           │                            │
-│                     │ • Rolling statistics     │                            │
-│                     │ • Feature selection      │                            │
-│                     │   (111 → 36 features)    │                            │
-│                     └──────────────────────────┘                            │
+│                     │ • Temporal features       │                           │
+│                     │ • Lag features            │                           │
+│                     │ • Rolling statistics      │                           │
+│                     │ • Feature selection       │                           │
+│                     │   (111 → 36 features)     │                           │
+│                     └───────────────────────────┘                           │
 │                                       │                                     │
 └───────────────────────────────────────┼─────────────────────────────────────┘
                                         │
