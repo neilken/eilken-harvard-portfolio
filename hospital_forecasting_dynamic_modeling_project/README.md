@@ -286,7 +286,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- Harvard Extension School, CSCI E-116
+- Harvard University Extension School, CSCI E-116
+- Professor William Yu for teaching the course
 - HHS for providing open hospital capacity data
 - CDC and NOAA for external data sources
 

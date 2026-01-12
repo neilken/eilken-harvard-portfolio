@@ -20,9 +20,10 @@ This data science portfolio contains a collection of projects developed as part 
 
 ### 2. Stock Busters: An Agentic System for Stock Recommendations
 - **Course:** *CSCI E-115 Advanced Practical Data Science*  
-- **Description:** Developed a production-grade multi-agent AI system for personalized stock recommendations, combining quantamental analysis with RAG-powered reasoning and deployed on Google Kubernetes Engine.  
+- **Description:** Developed a production-grade multi-agent AI system for personalized stock recommendations, combining quantamental analysis with RAG-powered reasoning and deployed on GCP, Google Kubernetes Engine.  
 - **Highlights:**
-  - Built end-to-end ML pipeline deployed on Cloud Run Jobs with automated daily retraining via Cloud Scheduler  
+  - Built end-to-end ML pipeline with Docker and GCP.
+  - Deployed on Cloud Run Jobs with automated daily retraining via Cloud Scheduler  
   - Implemented quantamental model combining 30+ technical and fundamental indicators (Random Forest classifier)  
   - Deployed scalable application on GKE with CI/CD pipeline (70% code coverage, automated testing)  
   - Integrated RAG system with ChromaDB and Vertex AI for contextual stock reasoning  
@@ -55,7 +56,7 @@ This data science portfolio contains a collection of projects developed as part 
 ---
 
 ### 5. NLP Sentiment Analysis of IMDb Reviews
-- **Course:** *CSCI E-109 Advanced Topics in Data Science*  
+- **Course:** *CSCI E-109B Advanced Topics in Data Science*  
 - **Description:**
   - Developed a deep learning NLP model (BERT + BiLSTM model) that predicts review sentiments with ~90% accuracy and ~94% precision
   - Built and evaluated multiple NLP models for sentiment classification on IMDb movie reviews.  
@@ -76,5 +77,10 @@ This portfolio highlights projects that combine academic rigor with practical ap
 
 This repository demonstrates my technical and analytical skills across multiple areas of data science. 
 
-**Contact:** noe489@g.harvard.edu
+
+**Contact:** 
+
+noe489@g.harvard.edu
+
+[Noah Eilken's LinkedIn](www.linkedin.com/in/neilken)
 
