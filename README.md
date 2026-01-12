@@ -82,5 +82,8 @@ This repository demonstrates my technical and analytical skills across multiple 
 
 noe489@g.harvard.edu
 
-[Noah Eilken's LinkedIn](www.linkedin.com/in/neilken)
+[Noah Eilken – LinkedIn](https://www.linkedin.com/in/neilken/)
+
+
+
 
