@@ -80,7 +80,7 @@ This data science portfolio contains a collection of projects developed as part 
   - Applying multilingual NLP and sentiment analysis to extract outbreak-relevant signal intensity  
   - Performing time-series and lead–lag analysis to compare digital signals against confirmed outbreak reports  
   - Evaluating tradeoffs between early detection, noise, and false alarms for public health decision support  
-- [Project Repository](./computational_epidemiology)
+- [Project README](./computational_epidemiology/computational_epidemiology_research.md)
 
 ---
 
