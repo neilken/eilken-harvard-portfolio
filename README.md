@@ -32,19 +32,7 @@ This data science portfolio contains a collection of projects developed as part 
 
 ---
 
-### 3. Building an Intelligent Lakehouse with Databricks and Spark
-- **Course:** *CSCI E-103 Data Engineering for Analytics*  
-- **Description:** Designed and implemented a data lakehouse architecture using **Databricks and Spark** for store sales forecasting, featuring a complete ETL pipeline from raw data ingestion to ML model deployment.  
-- **Highlights:**
-  - Built bronze/silver/gold Delta Lake architecture with incremental streaming pipelines  
-  - Implemented robust daily data pipelines with upserts and merges in the gold layer  
-  - Deployed GBT Regressor model with MLflow lifecycle management (R² = 0.82 on validation set)  
-  - Created Databricks SQL dashboard with security model using role-based access control  
-- [Project Repository](./data_engineering_analytics_with_databricks_and_spark_project)
-
----
-
-### 4. Data Mining Airline Delays for Clusters, Patterns, and Anomalies
+### 3. Data Mining Airline Delays for Clusters, Patterns, and Anomalies
 - **Course:** *CSCI E-108 Data Mining*  
 - **Description:** Analyzed the **ASA 2009 Airline On-Time Performance Dataset** using clustering (K-Means, DBSCAN, OPTICS, Agglomerative) and dimensionality reduction (PCA, UMAP, Spectral Embedding).  
 - **Highlights:**
@@ -55,7 +43,7 @@ This data science portfolio contains a collection of projects developed as part 
 
 ---
 
-### 5. NLP Sentiment Analysis of IMDb Reviews
+### 4. NLP Sentiment Analysis of IMDb Reviews
 - **Course:** *CSCI E-109B Advanced Topics in Data Science*  
 - **Description:**
   - Developed a deep learning NLP model (BERT + BiLSTM model) that predicts review sentiments with ~90% accuracy and ~94% precision
@@ -65,6 +53,18 @@ This data science portfolio contains a collection of projects developed as part 
   - Implemented models: Logistic Regression, Naive Bayes, LSTMs, and BERT  
   - Compared performance and discussed tradeoffs between classical ML and deep learning models  
 - [Project Repository](./nlp_sentiment_analysis_project)  
+
+---
+
+### 5. Building an Intelligent Lakehouse with Databricks and Spark
+- **Course:** *CSCI E-103 Data Engineering for Analytics*  
+- **Description:** Designed and implemented a data lakehouse architecture using **Databricks and Spark** for store sales forecasting, featuring a complete ETL pipeline from raw data ingestion to ML model deployment.  
+- **Highlights:**
+  - Built bronze/silver/gold Delta Lake architecture with incremental streaming pipelines  
+  - Implemented robust daily data pipelines with upserts and merges in the gold layer  
+  - Deployed GBT Regressor model with MLflow lifecycle management (R² = 0.82 on validation set)  
+  - Created Databricks SQL dashboard with security model using role-based access control  
+- [Project Repository](./data_engineering_analytics_with_databricks_and_spark_project)
 
 ---
 
