@@ -68,7 +68,7 @@ This data science portfolio contains a collection of projects developed as part 
 
 ---
 
-## In Progress Master's Degree Capstone Research Project
+## Master's Degree Capstone Research Project (In Progress)
 
 ### H5N1 Computational Epidemiology & Early-Warning System
 - **Type:** *Harvard Master’s Capstone Research (Data Science)*  
