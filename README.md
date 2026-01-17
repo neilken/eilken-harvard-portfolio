@@ -68,8 +68,24 @@ This data science portfolio contains a collection of projects developed as part 
 
 ---
 
+## In Progress Master's Degree Capstone Research Project
+
+### H5N1 Computational Epidemiology & Early-Warning System
+- **Type:** *Harvard Master’s Capstone Research (Data Science)*  
+- **Status:** In progress  
+- **Description:**  
+  Investigating whether large-scale social media signals from Meta (Facebook/Instagram) and X (Twitter) can provide early-warning indicators for global H5N1 (avian influenza) outbreaks by integrating digital signals with official surveillance data from WHO, FAO, and ProMED.
+- **Highlights:**
+  - Designing scalable data pipelines for multilingual social media ingestion and preprocessing  
+  - Applying multilingual NLP and sentiment analysis to extract outbreak-relevant signal intensity  
+  - Performing time-series and lead–lag analysis to compare digital signals against confirmed outbreak reports  
+  - Evaluating tradeoffs between early detection, noise, and false alarms for public health decision support  
+- [Project Repository](./computational_epidemiology)
+
+---
+
 ## About me
-I am a ***Master’s in Data Science candidate at Harvard University Extension School*** (graduating May 2026) with a strong foundation in machine learning, natural language processing, statistical modeling, and data engineering.
+I am completing a ***Master’s (ALM) in Data Science*** at Harvard University Extension School (expected May 2026), with a strong foundation in machine learning, natural language processing, statistical modeling, and data engineering.
 
 My experience spans building end-to-end ML pipelines, applying clustering and dimensionality reduction techniques for large datasets, and developing deep learning models for NLP and forecasting. I have hands-on expertise with modern tools such as Python, R, SQL, Spark, TensorFlow, PyTorch, GCP, AWS, and Databricks, and I focus on translating complex datasets into scalable, real-world solutions.
 
