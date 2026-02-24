@@ -83,19 +83,19 @@ Python-generated dashboard page previews below use real pipeline outputs from th
 
 ### Executive summary preview
 
-Executive summary dashboard preview
+![Executive summary dashboard preview](dashboards/powerbi/screenshots/page_1_executive_summary.png)
 
 ### Realization and leakage preview
 
-Realization and leakage dashboard preview
+![Realization and leakage dashboard preview](dashboards/powerbi/screenshots/page_2_realization_leakage.png)
 
 ### Promotions and elasticity preview
 
-Promotions and elasticity dashboard preview
+![Promotions and elasticity dashboard preview](dashboards/powerbi/screenshots/page_3_promotions_elasticity.png)
 
 ### Forecast and inventory actions preview
 
-Forecast and inventory actions dashboard preview
+![Forecast and inventory actions dashboard preview](dashboards/powerbi/screenshots/page_4_forecast_inventory_actions.png)
 
 ## Data quality and validation
 
@@ -131,11 +131,11 @@ Analysis outputs:
 
 ### Elasticity estimate confidence intervals
 
-Elasticity estimates figure
+![Elasticity estimates figure](memo/figures/elasticity_estimates_ci.png)
 
 ### 12-week demand forecast
 
-Forecast figure
+![Forecast figure](memo/figures/forecast_12_weeks.png)
 
 ## Repo structure
 
