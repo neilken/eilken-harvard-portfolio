@@ -1,0 +1,103 @@
+-- Pricing Analytics DAX Measure Pack
+-- Import pbi tables first, then create these measures in the Power BI model.
+
+-- Base sales measures
+Revenue = SUM ( fact_sales_weekly[revenue] )
+
+List Revenue = SUM ( fact_sales_weekly[list_revenue] )
+
+Gross Profit = SUM ( fact_sales_weekly[gross_profit] )
+
+Contribution Profit = SUM ( fact_sales_weekly[contribution_profit] )
+
+Units = SUM ( fact_sales_weekly[units] )
+
+Discount Amount = SUM ( fact_sales_weekly[discount_amount] )
+
+Gross Margin % = DIVIDE ( [Gross Profit], [Revenue] )
+
+Contribution Margin % = DIVIDE ( [Contribution Profit], [Revenue] )
+
+Price Realization % = DIVIDE ( [Revenue], [List Revenue] )
+
+-- Recommendations
+Recommended SKU Count = DISTINCTCOUNT ( fact_recommendations[sku] )
+
+Markdown Recommendations Count =
+CALCULATE (
+    DISTINCTCOUNT ( fact_recommendations[sku] ),
+    fact_recommendations[action_type] = "markdown"
+)
+
+Hold Recommendations Count =
+CALCULATE (
+    DISTINCTCOUNT ( fact_recommendations[sku] ),
+    fact_recommendations[action_type] = "hold"
+)
+
+Increase Recommendations Count =
+CALCULATE (
+    DISTINCTCOUNT ( fact_recommendations[sku] ),
+    fact_recommendations[action_type] = "increase"
+)
+
+Avg Recommended % Change = AVERAGE ( fact_recommendations[recommended_pct_change] )
+
+-- Price realization analysis views
+Leakage Amount (Analysis) = SUM ( fact_price_realization_analysis[leakage_amount] )
+
+Avg Analysis Gross Margin % = AVERAGE ( fact_price_realization_analysis[gross_margin_pct] )
+
+Avg Analysis Price Realization % = AVERAGE ( fact_price_realization_analysis[price_realization_pct] )
+
+-- Promo analysis
+Promo Incremental Gross Profit = SUM ( fact_promo_effectiveness_analysis[incremental_gross_profit] )
+
+Promo Unit Lift = AVERAGE ( fact_promo_effectiveness_analysis[promo_unit_lift] )
+
+Promo Regression Coef (Units) =
+CALCULATE (
+    MAX ( fact_promo_regression_effects[promo_share_coef] ),
+    fact_promo_regression_effects[metric] = "log_units_plus1"
+)
+
+Promo Regression Coef (Gross Profit) =
+CALCULATE (
+    MAX ( fact_promo_regression_effects[promo_share_coef] ),
+    fact_promo_regression_effects[metric] = "gross_profit"
+)
+
+-- Elasticity
+Avg Elasticity = AVERAGE ( fact_elasticity_estimates[elasticity_b1] )
+
+Min Elasticity = MIN ( fact_elasticity_estimates[elasticity_b1] )
+
+Max Elasticity = MAX ( fact_elasticity_estimates[elasticity_b1] )
+
+-- Forecast
+Forecast Units (12W Total) = SUM ( fact_forecast_12_weeks[forecast_units] )
+
+Forecast Units (Avg Weekly) = AVERAGE ( fact_forecast_12_weeks[forecast_units] )
+
+Forecast Low (12W Total) = SUM ( fact_forecast_12_weeks[forecast_low] )
+
+Forecast High (12W Total) = SUM ( fact_forecast_12_weeks[forecast_high] )
+
+-- Competitive position (weekly facts)
+Avg Price Index vs Comp Min = AVERAGE ( fact_competitor_weekly[price_index_vs_comp_min] )
+
+Avg Price Index vs Comp Median = AVERAGE ( fact_competitor_weekly[price_index_vs_comp_median] )
+
+-- Scenario comparison
+Best Scenario Gross Profit Change % =
+MAX ( fact_scenario_comparison[projected_gross_profit_change_pct] )
+
+Best Scenario Revenue Change % =
+MAXX (
+    TOPN (
+        1,
+        fact_scenario_comparison,
+        fact_scenario_comparison[projected_gross_profit_change_pct], DESC
+    ),
+    fact_scenario_comparison[projected_revenue_change_pct]
+)

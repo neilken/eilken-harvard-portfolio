@@ -8,7 +8,7 @@ This data science portfolio contains a collection of projects developed as part 
 
 ### 1. Hospital Bed Occupancy Forecasting
 - **Course:** *CSCI E-116 Dynamic Modeling and Forecasting in Big Data*  
-- **Description:** Comparative analysis of time series forecasting models for predicting weekly hospital bed occupancy at AdventHealth Orlando using 197 weeks of data (July 2020 – April 2024).  
+- **Description:** Comparative analysis of time series forecasting models for predicting weekly hospital bed occupancy at AdventHealth Orlando using 197 weeks of data (July 2020 - April 2024).  
 - **Highlights:**
   - Evaluated multiple models: Structural State-Space, SARIMAX, VAR, LSTM, and Seasonal Naive baseline  
   - Structural State-Space model achieved best performance with 1.75% MAE and near-zero bias  
@@ -62,30 +62,45 @@ This data science portfolio contains a collection of projects developed as part 
 - **Highlights:**
   - Built bronze/silver/gold Delta Lake architecture with incremental streaming pipelines  
   - Implemented robust daily data pipelines with upserts and merges in the gold layer  
-  - Deployed GBT Regressor model with MLflow lifecycle management (R² = 0.82 on validation set)  
+  - Deployed GBT Regressor model with MLflow lifecycle management (R^2 = 0.82 on validation set)  
   - Created Databricks SQL dashboard with security model using role-based access control  
 - [Project Repository](./data_engineering_analytics_with_databricks_and_spark_project)
+
+---
+
+### 6. Pricing Analytics Project (Portfolio Build)
+- **Type:** *Independent Portfolio Project*  
+- **Description:** End to end pricing analytics workflow using synthetic ERP-style data, Postgres, dbt, Python analytics, and Power BI-ready outputs.  
+- **Tech stack:** Python, SQL, PostgreSQL, dbt, Docker, Power BI  
+- **Highlights:**
+  - Reproducible pipeline with `raw -> dbt -> marts -> pbi` layers plus Python analysis modules
+  - Pricing analytics coverage: realization, promo effects, elasticity, forecasting, scenarios, and inventory actions
+  - Latest validated run produced `400` pricing recommendations and passed `dbt run` and `dbt test` (one expected warning)
+- **Details:** `pricing_analytics_project/README.md` (analysis and SQL documentation links included there)
+- [Project Repository](./pricing_analytics_project)
 
 ---
 
 ## Master's Degree Capstone Research Project (In Progress)
 
 ### H5N1 Computational Epidemiology & Early-Warning System
-- **Type:** *Harvard Master’s Capstone Research (Data Science)*  
+- **Type:** *Harvard Master's Capstone Research (Data Science)*  
 - **Status:** In progress  
 - **Description:**  
   Investigating whether large-scale social media signals from Meta (Facebook/Instagram) and X (Twitter) can provide early-warning indicators for global H5N1 (avian influenza) outbreaks by integrating digital signals with official surveillance data from WHO, FAO, and ProMED.
 - **Highlights:**
   - Designing scalable data pipelines for multilingual social media ingestion and preprocessing  
   - Applying multilingual NLP and sentiment analysis to extract outbreak-relevant signal intensity  
-  - Performing time-series and lead–lag analysis to compare digital signals against confirmed outbreak reports  
+  - Performing time-series and lead-lag analysis to compare digital signals against confirmed outbreak reports  
   - Evaluating tradeoffs between early detection, noise, and false alarms for public health decision support  
 - [Project README](./computational_epidemiology/computational_epidemiology_research.md)
 
 ---
 
+
+
 ## About me
-I am completing a ***Master’s (ALM) in Data Science*** at Harvard University Extension School (expected May 2026), with a strong foundation in machine learning, natural language processing, statistical modeling, and data engineering.
+I am completing a ***Master's (ALM) in Data Science*** at Harvard University Extension School (expected May 2026), with a strong foundation in machine learning, natural language processing, statistical modeling, and data engineering.
 
 My experience spans building end-to-end ML pipelines, applying clustering and dimensionality reduction techniques for large datasets, and developing deep learning models for NLP and forecasting. I have hands-on expertise with modern tools such as Python, R, SQL, Spark, TensorFlow, PyTorch, GCP, AWS, and Databricks, and I focus on translating complex datasets into scalable, real-world solutions.
 
@@ -98,7 +113,10 @@ This repository demonstrates my technical and analytical skills across multiple 
 
 noe489@g.harvard.edu
 
-[Noah Eilken – LinkedIn](https://www.linkedin.com/in/neilken/)
+[Noah Eilken - LinkedIn](https://www.linkedin.com/in/neilken/)
+
+
+
 
 
 

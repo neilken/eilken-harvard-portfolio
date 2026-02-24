@@ -1,0 +1,21 @@
+# Private local guides and plans
+secrets/
+
+# Local environments and caches
+**/.env
+**/.venv/
+**/.venv-wsl/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ipynb_checkpoints/
+**/.mypy_cache/
+
+# dbt build artifacts
+**/dbt/target/
+**/dbt/logs/
+
+# OS/editor noise
+**/.DS_Store
+**/Thumbs.db
+**/.vscode/

@@ -1,0 +1,12 @@
+pricing_analytics:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'pricing_app') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'pricing_app_pw') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'pricing') }}"
+      schema: staging
+      threads: 4

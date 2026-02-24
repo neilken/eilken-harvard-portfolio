@@ -1,0 +1,10 @@
+pandas>=2.2.0
+numpy>=1.26.0
+pyyaml>=6.0.1
+SQLAlchemy>=2.0.0
+psycopg2-binary>=2.9.9
+scikit-learn>=1.4.0
+statsmodels>=0.14.0
+python-dotenv>=1.0.1
+dbt-postgres>=1.8.0
+matplotlib>=3.8.0

@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: mart_pricing_metrics_weekly
+    columns:
+      - name: order_week
+        tests: [not_null]
+      - name: sku
+        tests: [not_null]
+      - name: gross_margin_pct
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: gross_margin_pct_is_defined
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+  - name: mart_discount_leakage
+    columns:
+      - name: leakage_flag
+        tests:
+          - not_null
+  - name: mart_inventory_actions_base
+    columns:
+      - name: sku
+        tests: [not_null]
+      - name: snapshot_week
+        tests: [not_null]

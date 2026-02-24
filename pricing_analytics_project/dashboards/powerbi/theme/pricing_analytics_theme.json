@@ -1,0 +1,47 @@
+{
+  "name": "PricingAnalyticsTheme",
+  "dataColors": [
+    "#1F4E79",
+    "#2C7A7B",
+    "#C05621",
+    "#2F855A",
+    "#B44D3A",
+    "#718096",
+    "#D69E2E",
+    "#4A5568"
+  ],
+  "background": "#F7FAFC",
+  "foreground": "#1A202C",
+  "tableAccent": "#1F4E79",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "title": [
+          {
+            "show": true,
+            "fontColor": { "solid": { "color": "#1A202C" } },
+            "fontSize": 12,
+            "fontFamily": "Segoe UI Semibold"
+          }
+        ],
+        "labels": [
+          {
+            "color": { "solid": { "color": "#1A202C" } },
+            "fontSize": 10,
+            "fontFamily": "Segoe UI"
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": { "solid": { "color": "#F7FAFC" } },
+            "transparency": 0
+          }
+        ]
+      }
+    }
+  }
+}

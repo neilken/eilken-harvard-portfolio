@@ -1,0 +1,24 @@
+version: 2
+
+sources:
+  - name: marts_analysis_outputs
+    schema: marts
+    tables:
+      - name: analysis_price_realization_diagnostics
+      - name: analysis_margin_erosion_by_sku_segment
+      - name: analysis_price_waterfall_category
+      - name: analysis_promo_effectiveness
+      - name: analysis_promo_regression_effects
+      - name: analysis_elasticity_estimates
+      - name: analysis_forecast_12_weeks
+      - name: analysis_scenario_comparison
+      - name: recommended_actions
+      - name: analysis_pocket_margin_proxy
+      - name: analysis_price_variance_vs_target
+      - name: analysis_price_dispersion_by_sku
+      - name: analysis_discount_exception_rates
+      - name: analysis_promo_roi_summary
+      - name: analysis_cannibalization_proxy
+      - name: analysis_inventory_sellthrough
+      - name: analysis_competitor_gap_distribution
+      - name: analysis_win_loss_proxy

@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: dim_date
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+  - name: dim_product
+    columns:
+      - name: sku
+        tests: [not_null, unique]
+  - name: dim_customer
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+  - name: fact_recommendations
+    columns:
+      - name: sku
+        tests: [not_null]
+      - name: action_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['markdown', 'hold', 'increase']

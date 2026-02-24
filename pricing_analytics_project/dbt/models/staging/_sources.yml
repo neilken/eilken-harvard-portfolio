@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: products
+      - name: customers
+      - name: sales_order_lines
+      - name: inventory_snapshots
+      - name: competitor_snapshots
+
+models:
+  - name: stg_products
+    columns:
+      - name: sku
+        tests: [not_null, unique]
+      - name: category
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['fuel', 'intake', 'exhaust', 'efi', 'ignition', 'accessories']
+      - name: lifecycle_stage
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['active', 'end_of_life']
+  - name: stg_customers
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: segment
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['retail', 'wholesale', 'dealer', 'ecommerce']
+      - name: channel
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['direct', 'distributor', 'marketplace']
+  - name: stg_sales_order_lines
+    columns:
+      - name: order_id
+        tests: [not_null]
+      - name: line_id
+        tests: [not_null]
+      - name: sku
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
